@@ -1,0 +1,40 @@
+@startuml
+' analysis_process_mining.puml - 过程挖掘
+package "分析处理层 (analysis)" {
+    package "过程挖掘 (process_mining)" {
+        class StageDetector {
+            +process_stages_yaml: str
+            +process_id: str
+            +stage_priority: List[str]
+            +_load_stages_config(process_id: str): List[Dict[str, Any]]
+            +_load_sensor_groups_config(process_id: str): List[Dict[str, Any]]
+            +_detect_stage_for_sensor(sensor_data: List[float], criteria: str, timestamps: List[str]): Dict[str, Any]
+            +_filter_data_by_criteria(data: Dict[str, Any], criteria: str, full_data: Dict[str, Any]): List[int]
+            +analyze(data: Dict[str, Any], **kwargs: Any): Dict[str, Any]
+            +run(**kwargs: Any): Any
+        }
+        class ProcessMiningFactory {
+            +_analyzers: Dict[str, Type[BaseAnalyzer]]
+            +{static} create_analyzer(analyzer_type: str, **kwargs: Any): BaseAnalyzer
+            +{static} register_analyzer(analyzer_type: str, analyzer_class: Type[BaseAnalyzer]): void
+            +{static} get_supported_types(): list
+        }
+    }
+}
+
+' 继承
+StageDetector --|> BaseAnalyzer
+
+' 接口实现
+StageDetector ..|> IAnalyzer
+
+' 工厂
+ProcessMiningFactory ..> StageDetector : creates
+
+' 异常
+StageDetector ..> AnalysisError : throws
+
+' 依赖
+StageDetector --> RuleEngineAdapter
+
+@enduml

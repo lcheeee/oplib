@@ -1,0 +1,259 @@
+# operators.yaml
+version: v1
+operators:
+  - id: "validate_json_schema"
+    name: "JSON Schema验证"
+    description: "根据JSON Schema验证数据格式"
+    category: "validation"
+    input_type: "any"
+    output_type: "validated_data"
+    parameters:
+      - name: "schema_file"
+        type: "string"
+        required: true
+        description: "JSON Schema文件路径"
+    implementation:
+      module: "operators.validation"
+      class_name: "JsonSchemaValidator"
+
+  - id: "z_score_outlier"
+    name: "Z-Score异常值处理"
+    description: "使用Z-Score方法检测和处理异常值"
+    category: "cleaning"
+    input_type: "numeric_series"
+    output_type: "cleaned_series"
+    parameters:
+      - name: "threshold"
+        type: "float"
+        required: true
+        default: 3.0
+        description: "Z-Score阈值"
+    implementation:
+      module: "operators.cleaning"
+      class_name: "ZScoreOutlierHandler"
+
+  - id: "sensor_group_aggregator"
+    name: "传感器组聚合器"
+    description: "根据传感器组聚合数据"
+    category: "aggregation"
+    input_type: "numeric_series"
+    output_type: "aggregated_series"
+    parameters:
+      - name: "sensor_groups"
+        type: "array"
+        required: true
+        description: "传感器组列表"
+        items:
+          type: "object"
+          properties:
+            group_name:
+              type: "string"
+            sensors:
+              type: "array"
+              items:
+                type: "string"
+            aggregations:
+              type: "array"
+              items:
+                type: "string"
+    implementation:
+      module: "operators.aggregation"
+      class_name: "SensorGroupAggregator"
+
+  - id: "time_based_stage_detection"
+    name: "基于时间的阶段检测"
+    description: "根据时间规则识别工艺阶段"
+    category: "process_mining"
+    input_type: "time_series"
+    output_type: "labeled_series"
+    parameters:
+      - name: "stages"
+        type: "array"
+        required: true
+        description: "阶段定义列表"
+        items:
+          type: "object"
+          properties:
+            name: 
+              type: "string"
+            criteria:
+              type: "string"
+    implementation:
+      module: "operators.process_mining"
+      class_name: "TimeBasedStageDetector"
+
+  - id: "rule_evaluator"
+    name: "规则评估器"
+    description: "评估预定义的规则"
+    category: "calculation"
+    input_type: "labeled_series"
+    output_type: "rule_result"
+    parameters:
+      - name: "rule_id"
+        type: "string"
+        required: true
+        description: "要评估的规则ID"
+    implementation:
+      module: "operators.calculation"
+      class_name: "RuleEvaluator"
+
+  - id: "spc_control_charts"
+    name: "SPC控制图"
+    description: "生成SPC控制图"
+    category: "spc"
+    input_type: "numeric_series"
+    output_type: "spc_chart"
+    parameters:
+      - name: "chart_type"
+        type: "string"
+        required: true
+        default: "xbar_r"
+        description: "控制图类型"
+    implementation:
+      module: "operators.spc"
+      class_name: "SPCControlChart"
+
+  - id: "time_window_cache"
+    name: "时间窗口缓存"
+    description: "基于时间窗口的数据缓存，适合实时数据流"
+    category: "cache"
+    input_type: "stream_data"
+    output_type: "cached_data"
+    parameters:
+      - name: "window_size"
+        type: "integer"
+        required: true
+        default: 60
+        description: "时间窗口大小（秒）"
+      - name: "max_records"
+        type: "integer"
+        required: true
+        default: 1000
+        description: "最大缓存记录数"
+      - name: "eviction_policy"
+        type: "string"
+        required: false
+        default: "lru"
+        description: "淘汰策略：lru, fifo, ttl"
+    implementation:
+      module: "operators.cache"
+      class_name: "TimeWindowCache"
+
+  - id: "sliding_window_cache"
+    name: "滑动窗口缓存"
+    description: "滑动窗口缓存，保持固定数量的最新数据"
+    category: "cache"
+    input_type: "stream_data"
+    output_type: "cached_data"
+    parameters:
+      - name: "window_size"
+        type: "integer"
+        required: true
+        default: 100
+        description: "窗口大小（记录数）"
+      - name: "slide_step"
+        type: "integer"
+        required: true
+        default: 10
+        description: "滑动步长（记录数）"
+    implementation:
+      module: "operators.cache"
+      class_name: "SlidingWindowCache"
+
+  - id: "batch_cache"
+    name: "批处理缓存"
+    description: "累积数据到指定数量或时间后批量处理"
+    category: "cache"
+    input_type: "stream_data"
+    output_type: "cached_data"
+    parameters:
+      - name: "batch_size"
+        type: "integer"
+        required: true
+        default: 100
+        description: "批处理大小（记录数）"
+      - name: "batch_timeout"
+        type: "integer"
+        required: true
+        default: 30
+        description: "批处理超时时间（秒）"
+    implementation:
+      module: "operators.cache"
+      class_name: "BatchCache"
+
+  - id: "time_alignment_processor"
+    name: "时间对齐处理器"
+    description: "处理时间不对齐的传感器数据，将不同传感器的数据对齐到统一时间网格"
+    category: "preprocessing"
+    input_type: "unaligned_sensor_data"
+    output_type: "aligned_sensor_data"
+    parameters:
+      - name: "time_resolution"
+        type: "float"
+        required: true
+        default: 1.0
+        description: "目标时间分辨率（秒）"
+      - name: "interpolation_method"
+        type: "string"
+        required: false
+        default: "linear"
+        description: "插值方法：linear, nearest, cubic, spline"
+      - name: "max_gap_tolerance"
+        type: "float"
+        required: false
+        default: 10.0
+        description: "最大允许时间间隔（秒），超过此间隔的数据点将被标记为缺失"
+      - name: "sensor_config"
+        type: "object"
+        required: true
+        description: "传感器配置，定义每个传感器的处理方式"
+        properties:
+          sensor_name:
+            type: "string"
+          data_column:
+            type: "string"
+          interpolation_method:
+            type: "string"
+            default: "linear"
+          max_gap_tolerance:
+            type: "float"
+            default: 10.0
+    implementation:
+      module: "operators.preprocessing"
+      class_name: "TimeAlignmentProcessor"
+
+  - id: "sensor_data_merger"
+    name: "传感器数据合并器"
+    description: "将时间对齐后的传感器数据合并成矩阵格式"
+    category: "preprocessing"
+    input_type: "aligned_sensor_data"
+    output_type: "merged_sensor_data"
+    parameters:
+      - name: "sensor_groups"
+        type: "array"
+        required: true
+        description: "传感器组配置"
+        items:
+          type: "object"
+          properties:
+            group_name:
+              type: "string"
+            sensors:
+              type: "array"
+              items:
+                type: "string"
+            output_column:
+              type: "string"
+    implementation:
+      module: "operators.preprocessing"
+      class_name: "SensorDataMerger"
+
+  - id: "report_generator"
+    name: "报告生成器"
+    description: "聚合多分支结果并生成汇总结构"
+    category: "report"
+    input_type: "any"
+    output_type: "report_dict"
+    implementation:
+      module: "operators.reporting"
+      class_name: "ReportGenerator"

@@ -1,0 +1,90 @@
+@startuml
+' workflow_config_utils.puml - 工作流、配置、工具层
+package "工作流层 (workflow)" {
+    class WorkflowBuilder {
+        +base_dir: str
+        +config_loader: ConfigLoader
+        +operators_index: Dict[str, Any]
+        +rules_index: Dict[str, Any]
+        +_import_impl(module: str, class_name: str): Callable[..., Any]
+        +_ref_to_node_id(ref: str): str
+        +_collect_nodes(wf_cfg: Dict[str, Any]): List[Dict[str, Any]]
+        +_build_graph(nodes: List[Dict[str, Any]]): Dict[str, Set[str]]
+        +_topo_sort(deps: Dict[str, Set[str]]): List[str]
+        +_resolve_inputs(n: Dict[str, Any], results: Dict[str, Any]): Tuple[Dict[str, Any], List[Any]]
+        +_build_payload_for_operator(n: Dict[str, Any], results: Dict[str, Any]): Dict[str, Any]
+        +build(workflow_yaml: str, operators_yaml: str, rules_yaml: str): Callable
+    }
+    class WorkflowExecutor {
+        +config: Dict[str, Any]
+        +client: Any
+        +execute_async(flow_func: Callable): Any
+        +execute(flow_func: Callable): Any
+        +execute_with_monitoring(flow_func: Callable): Dict[str, Any]
+    }
+    class TaskScheduler {
+        +config: Dict[str, Any]
+        +scheduled_tasks: List[Dict[str, Any]]
+        +running_tasks: Dict[str, Any]
+        +schedule_task(task_func: Callable, schedule_time: datetime, task_id: str, **kwargs: Any): str
+        +schedule_recurring_task(task_func: Callable, interval: timedelta, task_id: str, **kwargs: Any): str
+        +run_scheduler(): void
+        +_execute_task(task_info: Dict[str, Any]): void
+        +get_task_status(task_id: str): Dict[str, Any]
+        +cancel_task(task_id: str): bool
+    }
+}
+
+package "配置层 (config)" {
+    class ConfigLoader {
+        +base_dir: str
+        +load_workflow_config(config_file: str): Dict[str, Any]
+        +load_operators_config(config_file: str): Dict[str, Any]
+        +load_rules_config(config_file: str): Dict[str, Any]
+        +load_process_stages_config(config_file: str): Dict[str, Any]
+    }
+    abstract class ConfigValidator {
+        +{abstract} validate(config: Dict[str, Any]): bool
+    }
+    class WorkflowConfigValidator {
+        +validate(config: Dict[str, Any]): bool
+    }
+    class OperatorConfigValidator {
+        +validate(config: Dict[str, Any]): bool
+    }
+    class RulesConfigValidator {
+        +validate(config: Dict[str, Any]): bool
+    }
+}
+
+package "工具层 (utils)" {
+    class DataUtils {
+        +{static} safe_float_conversion(value: Any): Optional[float]
+        +{static} validate_data_structure(data: Dict[str, Any], required_keys: List[str]): bool
+        +{static} flatten_matrix_data(data: Dict[str, List[List[float]]]): Dict[str, List[float]]
+        +{static} extract_sensor_columns(data: Dict[str, List[float]], prefix: str): List[str]
+        +{static} merge_sensor_groups(data: Dict[str, List[float]], sensor_groups: List[Dict[str, Any]]): Dict[str, List[Any]]
+    }
+    class PathUtils {
+        +{static} resolve_path(base_dir: Union[str, Path], file_path: str): str
+        +{static} ensure_dir(dir_path: Union[str, Path]): void
+    }
+}
+
+' 继承
+WorkflowConfigValidator --|> ConfigValidator
+OperatorConfigValidator --|> ConfigValidator
+RulesConfigValidator --|> ConfigValidator
+
+' 组合
+WorkflowBuilder *-- ConfigLoader
+
+' 依赖
+FileWriter --> PathUtils
+ConfigLoader --> PathUtils
+
+' 异常
+ConfigLoader ..> ConfigurationError : throws
+WorkflowExecutor ..> WorkflowError : throws
+
+@enduml

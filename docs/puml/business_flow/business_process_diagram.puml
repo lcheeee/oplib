@@ -1,0 +1,193 @@
+@startuml 业务流程图
+!theme plain
+skinparam activity {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+    FontColor #000000
+}
+skinparam activityDiamond {
+    BackgroundColor #FFF3E0
+    BorderColor #F57C00
+}
+skinparam note {
+    BackgroundColor #F3E5F5
+    BorderColor #7B1FA2
+}
+skinparam database {
+    BackgroundColor #E8F5E8
+    BorderColor #388E3C
+}
+
+title OPLib 系统业务流程图
+
+start
+
+:接收工作流执行请求;
+note right: Web API 接收请求\n- POST /run\n- 参数验证\n- 请求日志记录
+
+:加载系统配置;
+note right: 配置加载阶段\n- workflow_curing_history.yaml\n- operators.yaml\n- rules.yaml\n- process_stages.yaml
+
+if (配置加载成功?) then (是)
+    :初始化工作流构建器;
+    note right: WorkflowBuilder 初始化\n- 配置加载器\n- 算子索引构建\n- 规则索引构建
+else (否)
+    :记录配置错误;
+    :返回错误响应;
+    stop
+endif
+
+:构建工作流DAG;
+note right: DAG构建过程\n- 收集所有节点\n- 构建依赖关系图\n- 拓扑排序验证\n- 循环依赖检测
+
+if (DAG构建成功?) then (是)
+    :创建工作流执行器;
+    note right: WorkflowExecutor 初始化\n- Prefect客户端配置\n- 监控参数设置\n- 执行环境准备
+else (否)
+    :记录DAG构建错误;
+    :返回错误响应;
+    stop
+endif
+
+partition "数据输入阶段" {
+    :读取传感器数据文件;
+    note right: 数据读取过程\n- 文件路径解析\n- 文件存在性检查\n- 数据格式识别
+    
+    if (文件存在且可读?) then (是)
+        :执行数据读取;
+        note right: CSVReader/JSONReader\n- 逐行读取数据\n- 数据清洗处理\n- 类型转换验证
+    else (否)
+        :记录文件读取错误;
+        :返回错误响应;
+        stop
+    endif
+    
+    :数据验证;
+    note right: DataValidator 验证\n- 必需字段检查\n- 数据类型验证\n- 数值范围检查
+    
+    if (数据验证通过?) then (是)
+        :继续处理;
+    else (否)
+        :记录数据验证错误;
+        :返回错误响应;
+        stop
+    endif
+}
+
+partition "数据处理阶段" {
+    :传感器组聚合;
+    note right: SensorGroupAggregator\n- 自动识别PTC*列\n- 加载传感器组配置\n- 执行数据聚合
+    
+    if (聚合配置存在?) then (是)
+        :使用配置进行聚合;
+    else (否)
+        :自动检测传感器组;
+        note right: 自动检测逻辑\n- 查找PTC开头的列\n- 识别压力传感器\n- 生成默认配置
+    endif
+    
+    :数据转换;
+    note right: SensorGroupTransformer\n- 矩阵数据展平\n- 数据格式标准化\n- 兼容性处理
+}
+
+partition "分析处理阶段" {
+    fork
+        :过程阶段检测;
+        note right: StageDetector\n- 加载阶段配置\n- 基于规则检测\n- 传感器级别分析
+        
+        if (阶段配置存在?) then (是)
+            :执行阶段检测;
+            note right: 阶段检测过程\n- 支持heating/soaking/cooling\n- 规则引擎评估\n- 数据点分类
+        else (否)
+            :跳过阶段检测;
+            note right: 无配置时直接透传数据
+        endif
+    fork again
+        :SPC控制图分析;
+        note right: SPCControlChart\n- 统计量计算\n- 控制限计算\n- 异常检测
+        
+        :计算基本统计量;
+        note right: 统计计算\n- 均值(mean)\n- 标准差(std)\n- 最小值/最大值
+        
+        :计算控制限;
+        note right: 3-sigma控制限\n- 上控制限(UCL)\n- 下控制限(LCL)\n- 异常点检测
+    end fork
+    
+    :规则评估;
+    note right: RuleEvaluator\n- 加载规则配置\n- 执行规则评估\n- 结果汇总
+    
+    if (规则配置存在?) then (是)
+        :执行规则评估;
+        note right: 规则评估过程\n- 支持分阶段规则\n- 规则引擎评估\n- 结果记录
+    else (否)
+        :跳过规则评估;
+        note right: 无规则时返回默认结果
+    endif
+}
+
+partition "报告生成阶段" {
+    :整合分析结果;
+    note right: ReportGenerator\n- 收集所有分析结果\n- 生成结构化报告\n- 格式标准化
+    
+    :生成分析报告;
+    note right: 报告生成过程\n- 阶段规则结果\n- SPC分析结果\n- 规则汇总信息
+    
+    :写入报告文件;
+    note right: FileWriter\n- 文件路径生成\n- 目录创建\n- JSON格式写入
+    
+    if (文件写入成功?) then (是)
+        :记录成功日志;
+    else (否)
+        :记录写入错误;
+        :返回错误响应;
+        stop
+    endif
+}
+
+:返回执行结果;
+note right: 返回结果信息\n- 成功/失败状态\n- 执行时间统计\n- 结果文件路径\n- 错误信息(如有)
+
+:记录执行日志;
+note right: 日志记录\n- 执行时间\n- 处理数据量\n- 错误信息\n- 性能指标
+
+stop
+
+' 业务规则说明
+note over start, stop
+**业务规则说明:**
+
+1. **配置驱动**: 系统完全基于YAML配置文件运行
+2. **错误处理**: 每个阶段都有完整的错误捕获和恢复机制
+3. **数据验证**: 多层次的数据验证确保数据质量
+4. **并行处理**: 阶段检测和SPC分析可以并行执行
+5. **自动检测**: 支持传感器组的自动识别和配置
+6. **监控能力**: 完整的执行监控和日志记录
+7. **可扩展性**: 支持新算子和规则的动态添加
+8. **容错性**: 配置缺失时提供默认行为
+end note
+
+' 数据流说明
+note right of :传感器组聚合
+**数据处理特点:**
+- 自动识别PTC开头的温度传感器
+- 支持多种聚合方法(concat/mean/max/min)
+- 保留原始数据供后续使用
+- 兼容pressure列名映射
+end note
+
+note right of :过程阶段检测
+**阶段检测特点:**
+- 支持heating/soaking/cooling三个阶段
+- 基于规则引擎的条件评估
+- 传感器级别的详细分析
+- 支持rate()函数计算变化率
+end note
+
+note right of :规则评估
+**规则评估特点:**
+- 支持分阶段规则执行
+- 规则引擎表达式评估
+- 灵活的规则配置
+- 详细的评估结果记录
+end note
+
+@enduml

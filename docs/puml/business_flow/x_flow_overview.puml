@@ -1,0 +1,100 @@
+@startuml 业务流和数据流总览图
+!theme plain
+skinparam rectangle {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+}
+skinparam note {
+    BackgroundColor #FFF3E0
+    BorderColor #F57C00
+}
+
+title OPLib 系统业务流和数据流总览图
+
+package "业务流程图" {
+    rectangle "业务流程图" as BusinessProcess {
+        [系统启动] --> [配置加载] --> [工作流构建] --> [数据输入] --> [数据处理] --> [分析处理] --> [报告生成] --> [结果返回]
+    }
+}
+
+package "数据流图" {
+    rectangle "数据流图" as DataFlow {
+        [原始数据] --> [聚合数据] --> [阶段化数据] --> [规则结果] --> [分析报告] --> [输出文件]
+        [原始数据] --> [聚合数据] --> [SPC结果] --> [分析报告]
+    }
+}
+
+package "序列流程图" {
+    rectangle "序列流程图" as SequenceFlow {
+        [用户请求] --> [API处理] --> [工作流执行] --> [组件交互] --> [结果返回]
+    }
+}
+
+package "系统架构图" {
+    rectangle "系统架构图" as SystemArch {
+        [核心抽象层] --> [数据处理层] --> [分析处理层] --> [工作流层] --> [算子层] --> [报告生成层]
+    }
+}
+
+' 关系说明
+BusinessProcess ||--|| DataFlow : "业务流程驱动数据流"
+DataFlow ||--|| SequenceFlow : "数据流通过序列交互实现"
+SequenceFlow ||--|| SystemArch : "序列交互基于系统架构"
+
+note top of BusinessProcess
+**业务流程图特点:**
+- 展示完整的业务流程
+- 包含决策点和错误处理
+- 支持并行处理分支
+- 详细的业务规则说明
+end note
+
+note top of DataFlow
+**数据流图特点:**
+- 展示数据在系统中的流转
+- 包含数据存储和处理过程
+- 支持并行数据处理
+- 详细的数据结构说明
+end note
+
+note top of SequenceFlow
+**序列流程图特点:**
+- 展示组件间的交互时序
+- 包含激活和去激活过程
+- 支持并行执行分支
+- 详细的错误处理机制
+end note
+
+note top of SystemArch
+**系统架构图特点:**
+- 展示系统的分层架构
+- 包含所有类和接口关系
+- 支持设计模式应用
+- 详细的模块职责说明
+end note
+
+' 整体说明
+note bottom
+**OPLib 系统特点总结:**
+
+1. **配置驱动**: 完全基于YAML配置文件运行
+2. **模块化设计**: 清晰的分层架构和模块职责
+3. **数据流处理**: 从原始数据到分析报告的完整流程
+4. **业务规则**: 支持复杂的业务规则和阶段检测
+5. **并行处理**: 支持多个分析任务的并行执行
+6. **错误处理**: 完整的异常捕获和恢复机制
+7. **监控能力**: 详细的执行监控和日志记录
+8. **可扩展性**: 支持新算子和规则的动态添加
+9. **容错性**: 配置缺失时提供默认行为
+10. **企业级**: 符合现代软件工程最佳实践
+
+**适用场景:**
+- 工业传感器数据分析
+- 工艺过程监控
+- 质量控制系统
+- 统计过程控制(SPC)
+- 规则引擎应用
+- 报告生成系统
+end note
+
+@enduml

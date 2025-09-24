@@ -1,0 +1,46 @@
+@startuml
+' operators.puml - 算子层
+package "算子层 (operators)" {
+    class SensorGroupAggregator {
+        +process_stages_yaml: str
+        +config: Dict[str, Any]
+        +_load_sensor_groups_from_process(process_id: str): List[Dict[str, Any]]
+        +_aggregate_sensors(data: Dict[str, List[float]], group_config: Dict[str, Any]): List[List[float]]
+        +run(data: Dict[str, List[float]]): Dict[str, Any]
+    }
+    class RuleEvaluator {
+        +rules_index: Dict[str, Dict[str, Any]]
+        +config: Dict[str, Any]
+        +_evaluate_single_rule(rule_id: str, data: Dict[str, Any], params: Dict[str, Any]): Dict[str, Any]
+        +_extract_stage_data(staged_data: Dict[str, Any], stage_id: str): Dict[str, Any]
+        +run(staged_data: Dict[str, Any]): Dict[str, Any]
+    }
+    class TimeBasedStageDetector {
+        +process_stages_yaml: str
+        +config: Dict[str, Any]
+        +_load_stages_config(process_id: str): List[Dict[str, Any]]
+        +_load_sensor_groups_config(process_id: str): List[Dict[str, Any]]
+        +_detect_stage_for_sensor(sensor_data: List[float], criteria: str, timestamps: List[str]): Dict[str, Any]
+        +_filter_data_by_criteria(data: Dict[str, Any], criteria: str, full_data: Dict[str, Any]): List[int]
+        +run(data: Dict[str, Any]): Dict[str, Any]
+    }
+    class ReportGenerator {
+        +config: Dict[str, Any]
+        +run(rule_result: Dict[str, Any], spc: Dict[str, Any], model: Dict[str, Any]): Dict[str, Any]
+    }
+    class FileWriter {
+        +file_path: str
+        +run(content: Dict[str, Any]): str
+    }
+    class SPCControlChart {
+        +config: Dict[str, Any]
+        +run(data: Dict[str, Any]): Dict[str, Any]
+    }
+}
+
+' 继承
+ReportGenerator --|> BaseOperator
+FileWriter --|> BaseOperator
+SPCControlChart --|> BaseOperator
+
+@enduml

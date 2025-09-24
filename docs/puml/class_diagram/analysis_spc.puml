@@ -1,0 +1,32 @@
+@startuml
+' analysis_spc.puml - SPC控制图
+package "分析处理层 (analysis)" {
+    package "SPC控制图 (spc)" {
+        class SPCControlChart {
+            +chart_type: str
+            +control_limits: str
+            +analyze(data: Dict[str, Any], **kwargs: Any): Dict[str, Any]
+            +run(**kwargs: Any): Any
+        }
+        class SPCFactory {
+            +_analyzers: Dict[str, Type[BaseAnalyzer]]
+            +{static} create_analyzer(analyzer_type: str, **kwargs: Any): BaseAnalyzer
+            +{static} register_analyzer(analyzer_type: str, analyzer_class: Type[BaseAnalyzer]): void
+            +{static} get_supported_types(): list
+        }
+    }
+}
+
+' 继承
+SPCControlChart --|> BaseAnalyzer
+
+' 接口实现
+SPCControlChart ..|> IAnalyzer
+
+' 工厂
+SPCFactory ..> SPCControlChart : creates
+
+' 异常
+SPCControlChart ..> AnalysisError : throws
+
+@enduml

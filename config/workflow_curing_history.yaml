@@ -1,0 +1,91 @@
+# workflow_with_explicit_dag
+version: v1
+name: "curing_quality_analysis"
+process_id: "curing_001"  # 引用工艺阶段配置
+
+inputs:
+  - id: "sensor_data"
+    type: "file"
+    config:
+      file_path: "resources/test_data_1.csv"
+
+nodes:
+  # 数据验证
+  # - id: "data_validation"
+  #   type: "operator"
+  #   operator_id: "validate_json_schema"
+  #   input: "sensor_data"
+
+  # 数据清洗
+  # - id: "data_cleaning"
+  #   type: "operator" 
+  #   operator_id: "z_score_outlier"
+  #   parameters_override:
+  #     threshold: 3.0
+  #   input: "data_validation.output"
+
+  # 传感器组预处理（从 process_stages.yaml 读取配置）
+  - id: "sensor_group_aggregation"
+    type: "operator"
+    operator_id: "sensor_group_aggregator"
+    input: "sensor_data.output"
+    parameters_override:
+      process_id: "curing_001"  # 引用工艺配置中的传感器组
+
+  # 阶段识别
+  - id: "stage_identification"
+    type: "operator"
+    operator_id: "time_based_stage_detection"
+    input: "sensor_group_aggregation.output"
+
+  # 并行分支开始：规则检查
+  - id: "rule_based_analysis"
+    type: "operator"
+    operator_id: "rule_evaluator"
+    input: "stage_identification.output"
+    parameters_override:
+      rule_id: "rule_temperature_stability_001"
+      params:
+        max_std: 3.0
+
+  # 并行分支：SPC分析
+  - id: "spc_analysis"
+    type: "operator"
+    operator_id: "spc_control_charts"
+    input: "stage_identification.output"    
+
+  # # 并行分支：特征提取
+  # - id: "feature_extraction"
+  #   type: "operator"
+  #   operator_id: "advanced_feature_extractor"
+  #   input: "stage_identification.output"
+  
+  # - id: "xgboost_analysis"
+  #   type: "operator"
+  #   operator_id: "xgboost_classifier"
+  #   input: "feature_extraction.output"
+  
+  # 结果合并节点（简化版：只有规则和SPC）
+  - id: "results_aggregation"
+    type: "operator"
+    operator_id: "report_generator"
+    inputs:  # 多输入
+      - "rule_based_analysis.output"
+      - "spc_analysis.output"
+
+outputs:
+  - id: "final_report"
+    type: "file"
+    input: "results_aggregation.output"
+    config:
+      file_path: "quality-reports.json"
+  
+  # - id: "notification"
+  #   type: "operator"
+  #   operator_id: "ms_notification"
+  #   input: "final_report.output"
+  #   config:
+  #     to: "admin@example.com"
+  #     title: "固化工艺质量报告"
+  #     content: "请查看附件中的固化工艺质量报告"
+      

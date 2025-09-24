@@ -1,0 +1,48 @@
+@startuml
+' reporting_service.puml - 报告生成与服务层
+package "报告生成层 (reporting)" {
+    class ReportGenerator {
+        +template: str
+        +format: str
+        +run(**kwargs: Any): Any
+    }
+    class FileWriter {
+        +file_path: str
+        +encoding: str
+        +format: str
+        +run(**kwargs: Any): str
+    }
+    class ReportWriterFactory {
+        +_writers: Dict[str, type]
+        +{static} create_writer(writer_type: str, **kwargs: Any): BaseOperator
+        +{static} register_writer(writer_type: str, writer_class: type): void
+        +{static} get_supported_types(): list
+    }
+}
+
+package "规则引擎适配器 (rule_engine)" {
+    class RuleEngineAdapter {
+        +SAFE_SYMBOLS: Dict[str, Any]
+        +{static} safe_eval(expression: str, ctx: Dict[str, Any]): Any
+        +{static} evaluate_with_rule_engine(rule_id: str, expression: str, ctx: Dict[str, Any]): Dict[str, Any]
+    }
+}
+
+package "服务层" {
+    class WebAPI {
+        +app: FastAPI
+        +run_once(): Dict[str, str]
+    }
+    class RunWorkflowV2 {
+        +main(): void
+    }
+}
+
+' 继承
+ReportGenerator --|> BaseOperator
+FileWriter --|> BaseOperator
+
+' 工厂
+ReportWriterFactory ..> FileWriter : creates
+
+@enduml

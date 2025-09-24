@@ -1,0 +1,130 @@
+@startuml 数据流图
+!theme plain
+skinparam rectangle {
+    BackgroundColor #E3F2FD
+    BorderColor #1976D2
+}
+skinparam database {
+    BackgroundColor #E8F5E8
+    BorderColor #388E3C
+}
+skinparam note {
+    BackgroundColor #FFF3E0
+    BorderColor #F57C00
+}
+
+title OPLib 系统数据流图
+
+!define DATASTORE(name,desc) database name as "desc" <<datastore>>
+!define PROCESS(name,desc) rectangle name as "desc" <<process>>
+!define EXTERNAL(name,desc) rectangle name as "desc" <<external>>
+
+' 外部实体
+EXTERNAL(CSVFile, "CSV文件\n(原始传感器数据)")
+EXTERNAL(JSONFile, "JSON文件\n(配置数据)")
+EXTERNAL(User, "用户\n(API调用)")
+
+' 数据存储
+DATASTORE(RawData, "原始传感器数据\n{PTC10, PTC11, PTC12...}\n{PRESS}\n{timestamp}")
+DATASTORE(AggregatedData, "聚合后数据\n{temperature_group}\n{pressure}\n{original_data}")
+DATASTORE(StagedData, "阶段化数据\n{stage_detection}\n{sensor_data}\n{stages_config}")
+DATASTORE(RuleResults, "规则评估结果\n{stage_results}\n{rule_summary}")
+DATASTORE(SPCResults, "SPC分析结果\n{mean, std}\n{ucl, lcl}\n{out_of_control}")
+DATASTORE(AnalysisReport, "分析报告\n{stage_rules}\n{spc}\n{rule_summary}")
+DATASTORE(OutputFile, "输出文件\n{quality-reports.json}")
+
+' 处理过程
+PROCESS(DataReader, "数据读取器\nCSVReader/JSONReader\n- 数据清洗\n- 类型转换\n- 跳过非数值列")
+PROCESS(DataValidator, "数据验证器\nDataValidator\n- 验证数据结构\n- 检查数据类型\n- 验证数值范围")
+PROCESS(SensorAggregator, "传感器聚合器\nSensorGroupAggregator\n- 自动识别PTC*列\n- 按组聚合数据\n- 生成temperature_group")
+PROCESS(DataTransformer, "数据转换器\nSensorGroupTransformer\n- 矩阵数据展平\n- 数据格式标准化")
+PROCESS(StageDetector, "阶段检测器\nStageDetector\n- 基于规则检测工艺阶段\n- 支持heating/soaking/cooling\n- 传感器级别分析")
+PROCESS(RuleEvaluator, "规则评估器\nRuleEvaluator\n- 执行业务规则\n- 支持分阶段规则\n- 规则引擎评估")
+PROCESS(SPCAnalyzer, "SPC分析器\nSPCControlChart\n- 统计过程控制\n- 3-sigma控制限\n- 异常检测")
+PROCESS(ReportGenerator, "报告生成器\nReportGenerator\n- 整合所有分析结果\n- 生成结构化报告\n- 支持多种格式")
+PROCESS(FileWriter, "文件写入器\nFileWriter\n- 支持JSON格式\n- 自动创建目录\n- 时间戳标识")
+
+' 数据流关系
+CSVFile --> DataReader : "原始传感器数据"
+JSONFile --> DataReader : "配置文件"
+
+DataReader --> RawData : "清洗后数据"
+RawData --> DataValidator : "原始数据"
+DataValidator --> SensorAggregator : "验证通过数据"
+SensorAggregator --> AggregatedData : "聚合后数据"
+AggregatedData --> DataTransformer : "聚合数据"
+DataTransformer --> StageDetector : "转换后数据"
+DataTransformer --> SPCAnalyzer : "转换后数据"
+
+StageDetector --> StagedData : "阶段化数据"
+StagedData --> RuleEvaluator : "阶段化数据"
+RuleEvaluator --> RuleResults : "规则评估结果"
+
+SPCAnalyzer --> SPCResults : "SPC分析结果"
+
+RuleResults --> ReportGenerator : "规则结果"
+SPCResults --> ReportGenerator : "SPC结果"
+ReportGenerator --> AnalysisReport : "分析报告"
+AnalysisReport --> FileWriter : "报告内容"
+FileWriter --> OutputFile : "输出文件"
+
+OutputFile --> User : "质量报告"
+
+' 控制流
+User --> DataReader : "启动工作流"
+DataReader --> DataValidator : "数据验证"
+DataValidator --> SensorAggregator : "验证通过"
+SensorAggregator --> DataTransformer : "聚合完成"
+DataTransformer --> StageDetector : "转换完成"
+DataTransformer --> SPCAnalyzer : "转换完成"
+StageDetector --> RuleEvaluator : "阶段检测完成"
+RuleEvaluator --> ReportGenerator : "规则评估完成"
+SPCAnalyzer --> ReportGenerator : "SPC分析完成"
+ReportGenerator --> FileWriter : "报告生成完成"
+FileWriter --> User : "文件写入完成"
+
+' 数据流说明
+note top of RawData
+**原始传感器数据结构:**
+- PTC10, PTC11, PTC12... : 温度传感器数据
+- PRESS : 压力传感器数据  
+- timestamp : 时间戳数据
+- 其他非数值列被过滤
+end note
+
+note top of AggregatedData
+**聚合后数据结构:**
+- temperature_group : 温度传感器矩阵数据
+- pressure : 压力数据
+- original_data : 原始数据备份
+- 支持多种聚合方法(concat/mean/max/min)
+end note
+
+note top of StagedData
+**阶段化数据结构:**
+- stage_detection : 阶段检测结果
+- sensor_data : 传感器级别数据
+- stages_config : 阶段配置信息
+- 支持heating/soaking/cooling阶段
+end note
+
+note top of AnalysisReport
+**分析报告结构:**
+- stage_rules : 分阶段规则结果
+- spc : SPC分析结果
+- rule_summary : 规则汇总信息
+- 支持JSON格式输出
+end note
+
+' 数据流特点说明
+note bottom of DataReader
+**数据流特点:**
+1. **配置驱动**: 通过YAML文件定义数据流
+2. **模块化设计**: 每个处理步骤独立
+3. **并行处理**: 阶段检测和SPC分析并行执行
+4. **错误处理**: 完整的异常捕获和恢复
+5. **数据备份**: 保留原始数据供后续使用
+6. **格式标准化**: 统一的数据格式和接口
+end note
+
+@enduml
