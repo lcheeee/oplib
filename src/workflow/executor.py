@@ -16,6 +16,7 @@ except Exception:  # pragma: no cover
 
 from prefect import get_client
 from ..core.exceptions import WorkflowError
+from ..utils.logging_config import get_logger
 
 
 class WorkflowExecutor:
@@ -24,6 +25,7 @@ class WorkflowExecutor:
     def __init__(self, **kwargs: Any) -> None:
         self.config = kwargs
         self.client = None
+        self.logger = get_logger()
     
     async def execute_async(self, flow_func: Callable) -> Any:
         """异步执行工作流。"""
@@ -51,9 +53,19 @@ class WorkflowExecutor:
         import time
         start_time = time.time()
         
+        self.logger.info("\n" + "=" * 60)
+        self.logger.info("开始执行工作流")
+        self.logger.info("=" * 60)
+        
         try:
+            self.logger.info("正在调用工作流函数...")
             result = self.execute(flow_func)
             end_time = time.time()
+            
+            self.logger.info(f"工作流执行成功！")
+            self.logger.info(f"执行时间: {end_time - start_time:.2f} 秒")
+            self.logger.info(f"结果: {result}")
+            self.logger.info("=" * 60)
             
             return {
                 "success": True,
@@ -63,6 +75,10 @@ class WorkflowExecutor:
             }
         except Exception as e:
             end_time = time.time()
+            
+            self.logger.error(f"工作流执行失败: {e}")
+            self.logger.error(f"执行时间: {end_time - start_time:.2f} 秒")
+            self.logger.error("=" * 60)
             
             return {
                 "success": False,

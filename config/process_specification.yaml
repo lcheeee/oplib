@@ -1,0 +1,36 @@
+version: v1
+specifications:
+  cps7020:
+    name: "CPS7020热压罐固化工艺规范"
+    description: "用于CMS-CP-308材料的固化工艺规范"
+    material: "CMS-CP-308"
+    
+    stages:
+      - stage: "pre_heating"
+        rules: ["pressure_at_lower_limit"]
+        
+      - stage: "heating_phase_1"
+        rules: ["heating_rate_phase_1"]
+        
+      - stage: "heating_phase_2"
+        rules: ["heating_rate_phase_2"]
+        
+      - stage: "heating_phase_3"
+        rules: ["heating_rate_phase_3"]
+        
+      - stage: "soaking"
+        rules: ["soaking_temperature", "soaking_time", "curing_pressure"]
+        
+      - stage: "cooling"
+        rules: ["cooling_rate", "cooling_pressure", "thermocouple_cross_cooling"]
+    
+    global_rules:
+      - "thermocouple_cross_heating"
+      - "bag_pressure"
+    
+    sensor_groups:
+      - "thermocouples"
+      - "leading_thermocouples"
+      - "lagging_thermocouples"
+      - "pressure_sensors"
+      - "vacuum_sensors"

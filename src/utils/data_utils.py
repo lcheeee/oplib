@@ -27,25 +27,6 @@ def validate_data_structure(data: Dict[str, Any], required_keys: List[str]) -> b
     return True
 
 
-def flatten_matrix_data(data: Dict[str, List[List[float]]]) -> Dict[str, List[float]]:
-    """将矩阵数据展平为向量。"""
-    flattened = {}
-    
-    for key, matrix in data.items():
-        if not matrix:
-            flattened[key] = []
-            continue
-        
-        if isinstance(matrix[0], list):
-            # 矩阵格式：每行包含多个传感器的值，取均值
-            flattened[key] = [sum(row) / len(row) for row in matrix]
-        else:
-            # 向量格式：直接使用
-            flattened[key] = matrix
-    
-    return flattened
-
-
 def extract_sensor_columns(data: Dict[str, List[float]], prefix: str) -> List[str]:
     """提取指定前缀的传感器列名。"""
     return [key for key in data.keys() if str(key).upper().startswith(prefix.upper())]

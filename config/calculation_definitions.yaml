@@ -1,0 +1,141 @@
+version: v1
+
+# 计算定义配置文件
+# 定义规则中使用的各种计算逻辑和函数
+
+calculations:
+  # 基础数学函数
+  math_functions:
+    last:
+      description: "获取序列的最后一个值"
+      implementation: "lambda values: values[-1] if values else 0"
+      
+    first:
+      description: "获取序列的第一个值"
+      implementation: "lambda values: values[0] if values else 0"
+      
+    max:
+      description: "获取序列的最大值"
+      implementation: "lambda values: max(values) if values else 0"
+      
+    min:
+      description: "获取序列的最小值"
+      implementation: "lambda values: min(values) if values else 0"
+      
+    avg:
+      description: "获取序列的平均值"
+      implementation: "lambda values: sum(values) / len(values) if values else 0"
+      
+    count:
+      description: "获取序列的长度"
+      implementation: "lambda values: len(values) if values else 0"
+
+  # 时间相关函数
+  time_functions:
+    time_diff:
+      description: "计算时间差（分钟）"
+      implementation: "lambda times: (times[-1] - times[0]) / 60 if len(times) > 1 else 0"
+      
+    time_diff_seconds:
+      description: "计算时间差（秒）"
+      implementation: "lambda times: times[-1] - times[0] if len(times) > 1 else 0"
+
+  # 温度相关计算
+  temperature_calculations:
+    heating_rate:
+      description: "计算升温速率 (°C/min)"
+      formula: "(last(temperature) - first(temperature)) / time_diff(timestamps)"
+      inputs:
+        temperature: "thermocouples"  # 引用传感器组
+        timestamps: "timestamp"
+      unit: "°C/min"
+      
+    cooling_rate:
+      description: "计算降温速率 (°C/min)"
+      formula: "(last(temperature) - first(temperature)) / time_diff(timestamps)"
+      inputs:
+        temperature: "thermocouples"
+        timestamps: "timestamp"
+      unit: "°C/min"
+      
+    max_temperature:
+      description: "最高温度"
+      formula: "max(temperature)"
+      inputs:
+        temperature: "thermocouples"
+      unit: "°C"
+      
+    min_temperature:
+      description: "最低温度"
+      formula: "min(temperature)"
+      inputs:
+        temperature: "thermocouples"
+      unit: "°C"
+      
+    temperature_range:
+      description: "温度范围"
+      formula: "max(temperature) - min(temperature)"
+      inputs:
+        temperature: "thermocouples"
+      unit: "°C"
+
+  # 压力相关计算
+  pressure_calculations:
+    max_pressure:
+      description: "最大压力"
+      formula: "max(pressure)"
+      inputs:
+        pressure: "pressure_sensors"
+      unit: "kPa"
+      
+    min_pressure:
+      description: "最小压力"
+      formula: "min(pressure)"
+      inputs:
+        pressure: "pressure_sensors"
+      unit: "kPa"
+
+  # 持续时间计算
+  duration_calculations:
+    soaking_duration:
+      description: "保温持续时间（分钟）"
+      formula: "count(timestamps) * 0.1"  # 假设每0.1分钟一个数据点
+      inputs:
+        timestamps: "timestamp"
+      unit: "minutes"
+      
+    stage_duration:
+      description: "阶段持续时间（分钟）"
+      formula: "time_diff(timestamps)"
+      inputs:
+        timestamps: "timestamp"
+      unit: "minutes"
+
+  # 复合计算
+  composite_calculations:
+    thermocouple_cross_diff_heating:
+      description: "升温阶段热电偶交叉温差"
+      formula: "min(leading_thermocouples) - max(lagging_thermocouples)"
+      inputs:
+        leading_thermocouples: "leading_thermocouples"
+        lagging_thermocouples: "lagging_thermocouples"
+      unit: "°C"
+      
+    thermocouple_cross_diff_cooling:
+      description: "降温阶段热电偶交叉温差"
+      formula: "max(leading_thermocouples) - min(lagging_thermocouples)"
+      inputs:
+        leading_thermocouples: "leading_thermocouples"
+        lagging_thermocouples: "lagging_thermocouples"
+      unit: "°C"
+
+# 计算上下文定义
+context_mappings:
+  # 将传感器组映射到计算上下文
+  sensor_group_mappings:
+    thermocouples: "PTC10,PTC11,PTC23,PTC24"  # 多列平均值
+    leading_thermocouples: "PTC10,PTC11"
+    lagging_thermocouples: "PTC23,PTC24"
+    pressure_sensors: "PRESS"
+    vacuum_sensors: "VPRB1"
+    timestamps: "timestamp"

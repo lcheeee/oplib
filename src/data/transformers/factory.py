@@ -2,14 +2,16 @@
 
 from typing import Any, Dict, Type
 from ...core.base import BaseProcessor
-from .sensor_group import SensorGroupTransformer
+from .aggregator import SensorGroupAggregator
+from .validator import DataValidator
 
 
 class DataTransformerFactory:
     """数据转换器工厂类。"""
     
     _transformers: Dict[str, Type[BaseProcessor]] = {
-        "sensor_group": SensorGroupTransformer,
+        "sensor_group_aggregator": SensorGroupAggregator,
+        "data_validator": DataValidator,
     }
     
     @classmethod

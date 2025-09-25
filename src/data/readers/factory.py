@@ -3,7 +3,6 @@
 from typing import Any, Dict, Type
 from ...core.base import BaseReader
 from .csv_reader import CSVReader
-from .json_reader import JSONReader
 
 
 class DataReaderFactory:
@@ -11,7 +10,6 @@ class DataReaderFactory:
     
     _readers: Dict[str, Type[BaseReader]] = {
         "csv": CSVReader,
-        "json": JSONReader,
     }
     
     @classmethod

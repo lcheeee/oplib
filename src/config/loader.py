@@ -47,14 +47,14 @@ class ConfigLoader:
         """加载工作流配置。"""
         return load_yaml(resolve_path(self.base_dir, config_file))
     
-    def load_operators_config(self, config_file: str) -> Dict[str, Any]:
-        """加载算子配置。"""
-        return load_yaml(resolve_path(self.base_dir, config_file))
-    
     def load_rules_config(self, config_file: str) -> Dict[str, Any]:
         """加载规则配置。"""
         return load_yaml(resolve_path(self.base_dir, config_file))
     
     def load_process_stages_config(self, config_file: str) -> Dict[str, Any]:
         """加载工艺阶段配置。"""
+        return load_yaml(resolve_path(self.base_dir, config_file))
+    
+    def load_calculation_definitions_config(self, config_file: str) -> Dict[str, Any]:
+        """加载计算定义配置。"""
         return load_yaml(resolve_path(self.base_dir, config_file))

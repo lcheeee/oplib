@@ -1,0 +1,20 @@
+# OPLib 启动配置文件
+version: v1
+
+# 配置文件路径映射
+config_files:
+  workflow_config: "config/workflow_config.yaml"
+  process_rules: "config/process_rules.yaml"
+  process_stages: "config/process_stages.yaml"
+  calculation_definitions: "config/calculation_definitions.yaml"
+  process_specification: "config/process_specification.yaml"
+
+# 启动参数
+startup:
+  base_dir: "."
+  debug: true
+  host: "0.0.0.0"
+  port: 8000
+  reload: false
+  log_level: "info" #debug, info, warning, error, critical
+  

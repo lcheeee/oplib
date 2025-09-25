@@ -35,6 +35,21 @@ class CSVReader(BaseReader):
             if "PRESS" in data and "pressure" not in data:
                 data["pressure"] = data["PRESS"]
             
+            # 打印数据结构和前几行用于确认
+            from ...utils.logging_config import get_logger
+            logger = get_logger()
+            
+            logger.info("=" * 50)
+            logger.info("数据验证完成 - 数据结构信息:")
+            logger.info(f"数据列数: {len(data)}")
+            logger.info(f"数据列名: {list(data.keys())}")
+            
+            # 显示每列的数据长度和前几个值
+            for col_name, values in data.items():
+                logger.info(f"列 '{col_name}': 长度={len(values)}, 前5个值={values[:5]}")
+            
+            logger.info("=" * 50)
+            
             return data
             
         except Exception as e:

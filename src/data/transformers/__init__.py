@@ -1,9 +1,11 @@
 """数据转换器模块。"""
 
-from .sensor_group import SensorGroupTransformer
+from .aggregator import SensorGroupAggregator
+from .validator import DataValidator
 from .factory import DataTransformerFactory
 
 __all__ = [
-    "SensorGroupTransformer",
+    "SensorGroupAggregator",
+    "DataValidator",
     "DataTransformerFactory"
 ]

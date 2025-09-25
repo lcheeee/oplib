@@ -1,0 +1,52 @@
+{
+  "complete_request": {
+    "workflow_name": "curing_analysis",
+    "parameters": {
+      "series_id": "CA00099852.4",
+      "specification": "CPS7020",
+      "material": "CMS-CP-308",
+      "atmosphere_control": false,
+      "thermocouples": ["TC54", "TC10", "TC50", "TC14"],
+      "vacuum_lines": ["VL2"],
+      "leading_thermocouples": ["TC54", "TC10"],
+      "lagging_thermocouples": ["TC50", "TC14"],
+      "calculation_date": "2022/5/30"
+    },
+    "inputs": {
+      "data_source": "resources/test_data_1.csv",
+      "online_data": false
+    }
+  },
+  "minimal_request": {
+    "workflow_name": "curing_analysis",
+    "parameters": {
+      "series_id": "CA00099852.4",
+      "calculation_date": "2022/5/30"
+    },
+    "inputs": {
+      "data_source": "resources/test_data_1.csv"
+    }
+  },
+  "partial_override_request": {
+    "workflow_name": "curing_analysis",
+    "parameters": {
+      "series_id": "CA00099852.5",
+      "material": "CMS-CP-309",
+      "thermocouples": ["TC55", "TC11", "TC51", "TC15"],
+      "calculation_date": "2022/6/1"
+    },
+    "inputs": {
+      "data_source": "resources/test_data_2.csv"
+    }
+  },
+  "online_data_request": {
+    "workflow_name": "curing_analysis",
+    "parameters": {
+      "series_id": "CA00099852.6",
+      "calculation_date": "2022/6/2"
+    },
+    "inputs": {
+      "online_data": true
+    }
+  }
+}

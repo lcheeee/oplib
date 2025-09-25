@@ -1,0 +1,107 @@
+version: v1
+
+# 工作流缓存配置
+cache:
+  max_workflows: 2  # 最大缓存工作流数量，默认2个
+
+workflows:
+  curing_analysis:
+    name: "热压罐固化分析工作流"
+    description: "基于CPS7020规范的固化工艺数据分析"
+    
+    parameters:
+      series_id:
+        type: "string"
+        required: true
+        description: "系列号"
+      specification:
+        type: "string"
+        default: "CPS7020"
+        description: "工艺规范"
+      material:
+        type: "string"
+        default: "CMS-CP-308"
+        description: "主要复合材料"
+      atmosphere_control:
+        type: "boolean"
+        default: false
+        description: "是否通大气"
+      thermocouples:
+        type: "array"
+        default: ["TC54", "TC10", "TC50", "TC14"]
+        description: "参与计算的热电偶"
+      vacuum_lines:
+        type: "array"
+        default: ["VL2"]
+        description: "参与计算的真空管路"
+      leading_thermocouples:
+        type: "array"
+        default: ["TC54", "TC10"]
+        description: "领先偶"
+      lagging_thermocouples:
+        type: "array"
+        default: ["TC50", "TC14"]
+        description: "滞后偶"
+      calculation_date:
+        type: "string"
+        required: true
+        description: "计算日期"
+    
+    inputs:
+      data_source:
+        type: "file"
+        format: "csv"
+        description: "传感器数据文件"
+        required: true
+      online_data:
+        type: "database"
+        connection: "opcua_connection"
+        description: "在线数据源（可选）"
+        required: false
+    
+    tasks:
+      - id: "load_data"
+        type: "input"
+        implementation: "prefect_csv_loader"
+        parameters:
+          file_path: "{input_file}"
+          timestamp_column: "timestamp"
+        
+      - id: "group_sensors"
+        type: "processing"
+        implementation: "sensor_grouper"
+        parameters:
+          calculation_config: "config/calculation_definitions.yaml"
+        depends_on: ["load_data"]
+        
+      - id: "detect_stages"
+        type: "processing"
+        implementation: "stage_detector"
+        parameters:
+          stage_config: "config/process_stages.yaml"
+        depends_on: ["load_data", "group_sensors"]
+        
+      - id: "check_rules"
+        type: "validation"
+        implementation: "rule_engine_checker"
+        parameters:
+          spec_config: "config/process_specification.yaml"
+          rule_config: "config/process_rules.yaml"
+          calculation_config: "config/calculation_definitions.yaml"
+        depends_on: ["detect_stages", "group_sensors"]
+        
+      - id: "generate_report"
+        type: "output"
+        implementation: "report_generator"
+        parameters:
+          template: "curing_report"
+          format: "json"
+        depends_on: ["check_rules"]
+    
+    outputs:
+      report:
+        type: "file"
+        path: "reports/{series_id}_report.json"
+      metrics:
+        type: "data"
+        path: "metrics/{series_id}_metrics.json"
