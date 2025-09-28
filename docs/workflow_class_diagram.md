@@ -33,25 +33,25 @@ classDiagram
     class BaseDataProcessor {
         <<interface>>
         +process(data) Union[SensorGroupingOutput, StageDetectionOutput]
-        +get_algorithm() str {default implementation}
+        +get_algorithm() str
     }
     
     class BaseDataAnalyzer {
         <<interface>>
         +analyze(data) DataAnalysisOutput
-        +get_algorithm() str {default implementation}
+        +get_algorithm() str
     }
     
     class BaseResultMerger {
         <<interface>>
         +merge(results) Union[ResultAggregationOutput, ResultValidationOutput, ResultFormattingOutput]
-        +get_algorithm() str {default implementation}
+        +get_algorithm() str
     }
     
     class BaseResultBroker {
         <<interface>>
         +broker(result) str
-        +get_broker_type() str {default implementation}
+        +get_broker_type() str
     }
 
     %% 数据源层 (Layer 1)
@@ -61,7 +61,7 @@ classDiagram
         -timestamp_column: str
         +read() DataSourceOutput
         +validate() bool
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
     
     class KafkaDataSource {
@@ -70,7 +70,7 @@ classDiagram
         -group_id: str
         +read() DataSourceOutput
         +validate() bool
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
     
     class DatabaseDataSource {
@@ -78,7 +78,7 @@ classDiagram
         -query: str
         +read() DataSourceOutput
         +validate() bool
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
     
     class APIDataSource {
@@ -87,7 +87,7 @@ classDiagram
         -headers: Dict[str, str]
         +read() DataSourceOutput
         +validate() bool
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
 
     %% 数据处理层 (Layer 2)
@@ -97,7 +97,7 @@ classDiagram
         -process_id: str
         +process(data) SensorGroupingOutput
         +_perform_grouping() GroupingInfo
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
     
     class StageDetectorProcessor {
@@ -106,7 +106,7 @@ classDiagram
         -process_id: str
         +process(data) StageDetectionOutput
         +_detect_stages() StageInfo
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
     
     class DataPreprocessor {
@@ -114,7 +114,7 @@ classDiagram
         -method: str
         -threshold: float
         +process(data) Union[SensorGroupingOutput, StageDetectionOutput]
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
     
     class DataCleaner {
@@ -123,7 +123,7 @@ classDiagram
         +process(data) Union[SensorGroupingOutput, StageDetectionOutput]
         +_clean_data() Dict[str, Any]
         +_linear_interpolation() np.ndarray
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
 
     %% 数据分析层 (Layer 3)
@@ -135,7 +135,7 @@ classDiagram
         +analyze(data) DataAnalysisOutput
         +_check_rules() Dict[str, RuleResult]
         +_evaluate_rule() Dict[str, Any]
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
     
     class SPCAnalyzer {
@@ -143,14 +143,14 @@ classDiagram
         -chart_type: str
         -control_limits: str
         +analyze(data) DataAnalysisOutput
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
     
     class FeatureExtractor {
         -algorithm: str
         -features: List[str]
         +analyze(data) DataAnalysisOutput
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
     
     class CNNPredictor {
@@ -158,7 +158,7 @@ classDiagram
         -model_path: str
         -input_shape: list
         +analyze(data) DataAnalysisOutput
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
     
     class AnomalyDetector {
@@ -168,7 +168,7 @@ classDiagram
         +_detect_anomalies() Dict[str, Any]
         +_isolation_forest_detection() Dict[str, Any]
         +_statistical_anomaly_detection() Dict[str, Any]
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
 
     %% 结果合并层 (Layer 4)
@@ -180,7 +180,7 @@ classDiagram
         +_majority_vote_merge() Dict[str, Any]
         +_consensus_merge() Dict[str, Any]
         +_simple_merge() Dict[str, Any]
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
     
     class ResultValidator {
@@ -191,7 +191,7 @@ classDiagram
         +_range_validation() ValidationResult
         +_type_validation() ValidationResult
         +_basic_validation() ValidationResult
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
     
     class ResultFormatter {
@@ -203,7 +203,7 @@ classDiagram
         +_summary_format() Dict[str, Any]
         +_detailed_format() Dict[str, Any]
         +_basic_format() Dict[str, Any]
-        +get_algorithm() str {inherited}
+        +get_algorithm() str
     }
 
     %% 结果输出层 (Layer 5)
@@ -216,7 +216,7 @@ classDiagram
         +_write_json() void
         +_write_yaml() void
         +_write_text() void
-        +get_broker_type() str {inherited}
+        +get_broker_type() str
     }
     
     class WebhookWriter {
@@ -225,7 +225,7 @@ classDiagram
         -method: str
         -headers: Dict[str, str]
         +broker(result) str
-        +get_broker_type() str {inherited}
+        +get_broker_type() str
     }
     
     class KafkaWriter {
@@ -233,7 +233,7 @@ classDiagram
         -topic: str
         -brokers: list
         +broker(result) str
-        +get_broker_type() str {inherited}
+        +get_broker_type() str
     }
     
     class DatabaseWriter {
@@ -241,7 +241,7 @@ classDiagram
         -connection_string: str
         -table: str
         +broker(result) str
-        +get_broker_type() str {inherited}
+        +get_broker_type() str
     }
 
     %% 工作流管理
