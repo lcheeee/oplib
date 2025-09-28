@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List
 from ...core.interfaces import BaseResultMerger
+from ...core.types import DataAnalysisOutput, ResultFormattingOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -12,11 +13,12 @@ class ResultFormatter(BaseResultMerger):
     
     def __init__(self, algorithm: str = "standard_format", 
                  output_format: str = "json", include_metadata: bool = True, **kwargs: Any) -> None:
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.algorithm = algorithm
         self.output_format = output_format
         self.include_metadata = include_metadata
     
-    def merge(self, results: List[Dict[str, Any]], **kwargs: Any) -> Dict[str, Any]:
+    def merge(self, results: List[DataAnalysisOutput], **kwargs: Any) -> ResultFormattingOutput:
         """格式化结果。"""
         try:
             if not results:
@@ -54,12 +56,47 @@ class ResultFormatter(BaseResultMerger):
         execution_time = kwargs.get("execution_time", datetime.now().strftime("%Y%m%d_%H%M%S"))
         generation_time = datetime.now().isoformat()
         
+        # 处理结果数据，提取规则分析结果
+        processed_results = []
+        for result in results:
+            if isinstance(result, dict):
+                # 如果是聚合结果，提取其中的规则分析结果
+                if "aggregated_result" in result:
+                    aggregated = result["aggregated_result"]
+                    if "rule_results" in aggregated:
+                        # 包含规则分析结果，简化输出格式
+                        rule_results = aggregated["rule_results"]
+                        analysis_info = aggregated.get("analysis_info", {})
+                        
+                        # 简化的规则检查结果
+                        simplified_rules = {}
+                        for rule_id, rule_data in rule_results.items():
+                            if isinstance(rule_data, dict):
+                                simplified_rules[rule_id] = "passed" if rule_data.get("passed", False) else "failed"
+                        
+                        processed_results.append({
+                            "rule_compliance": {
+                                "total_rules": analysis_info.get("rules_checked", len(rule_results)),
+                                "passed_rules": analysis_info.get("passed_rules", 0),
+                                "failed_rules": analysis_info.get("failed_rules", 0),
+                                "rules": simplified_rules
+                            }
+                        })
+                    else:
+                        # 其他类型的聚合结果
+                        processed_results.append(aggregated)
+                else:
+                    # 直接使用结果
+                    processed_results.append(result)
+            else:
+                processed_results.append(result)
+        
         formatted = {
             "analysis_summary": {
-                "total_results": len(results),
+                "total_results": len(processed_results),
                 "status": "completed"
             },
-            "results": results
+            "results": processed_results
         }
         
         if self.include_metadata:
@@ -153,7 +190,4 @@ class ResultFormatter(BaseResultMerger):
             "timestamp": datetime.now().isoformat()
         }
     
-    def get_algorithm(self) -> str:
-        """获取算法名称。"""
-        return self.algorithm
 

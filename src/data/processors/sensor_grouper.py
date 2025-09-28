@@ -2,6 +2,7 @@
 
 from typing import Any, Dict
 from ...core.interfaces import BaseDataProcessor
+from ...core.types import DataSourceOutput, SensorGroupingOutput, GroupingInfo, Metadata
 from ...core.exceptions import WorkflowError
 
 
@@ -10,11 +11,12 @@ class SensorGroupProcessor(BaseDataProcessor):
     
     def __init__(self, algorithm: str = "hierarchical_clustering", 
                  calculation_config: str = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.algorithm = algorithm
         self.calculation_config = calculation_config
         self.process_id = kwargs.get("process_id", "default_process")
     
-    def process(self, data: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
+    def process(self, data: DataSourceOutput, **kwargs: Any) -> SensorGroupingOutput:
         """处理传感器编组。"""
         try:
             # 获取数据
@@ -26,7 +28,7 @@ class SensorGroupProcessor(BaseDataProcessor):
             grouping_result = self._perform_grouping(sensor_data)
             
             # 构建结果
-            result = {
+            result: SensorGroupingOutput = {
                 "grouping_info": grouping_result,
                 "algorithm": self.algorithm,
                 "process_id": self.process_id,
@@ -38,7 +40,7 @@ class SensorGroupProcessor(BaseDataProcessor):
         except Exception as e:
             raise WorkflowError(f"传感器编组处理失败: {e}")
     
-    def _perform_grouping(self, sensor_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _perform_grouping(self, sensor_data: Dict[str, Any]) -> GroupingInfo:
         """执行传感器编组算法。"""
         # 模拟编组结果
         return {
@@ -52,7 +54,4 @@ class SensorGroupProcessor(BaseDataProcessor):
             "algorithm_used": self.algorithm
         }
     
-    def get_algorithm(self) -> str:
-        """获取算法名称。"""
-        return self.algorithm
 

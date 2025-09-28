@@ -2,6 +2,7 @@
 
 from typing import Any, Dict, List
 from ...core.interfaces import BaseResultMerger
+from ...core.types import DataAnalysisOutput, ResultValidationOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -10,10 +11,11 @@ class ResultValidator(BaseResultMerger):
     
     def __init__(self, algorithm: str = "consistency_check", 
                  validation_rules: str = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.algorithm = algorithm
         self.validation_rules = validation_rules
     
-    def merge(self, results: List[Dict[str, Any]], **kwargs: Any) -> Dict[str, Any]:
+    def merge(self, results: List[DataAnalysisOutput], **kwargs: Any) -> ResultValidationOutput:
         """验证结果。"""
         try:
             if not results:
@@ -184,7 +186,4 @@ class ResultValidator(BaseResultMerger):
         
         return validation
     
-    def get_algorithm(self) -> str:
-        """获取算法名称。"""
-        return self.algorithm
 

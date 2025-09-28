@@ -1,7 +1,8 @@
 """规则引擎分析器。"""
 
-from typing import Any, Dict
+from typing import Any, Dict, Union
 from ...core.interfaces import BaseDataAnalyzer
+from ...core.types import SensorGroupingOutput, StageDetectionOutput, DataAnalysisOutput, AnalysisInfo, RuleResult, Metadata
 from ...core.exceptions import WorkflowError
 
 
@@ -11,13 +12,14 @@ class RuleEngineAnalyzer(BaseDataAnalyzer):
     def __init__(self, algorithm: str = "compliance_checker", 
                  rule_config: str = None, spec_config: str = None, 
                  calculation_config: str = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.algorithm = algorithm
         self.rule_config = rule_config
         self.spec_config = spec_config
         self.calculation_config = calculation_config
         self.rules_index = kwargs.get("rules_index", {})
     
-    def analyze(self, data: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
+    def analyze(self, data: Union[SensorGroupingOutput, StageDetectionOutput], **kwargs: Any) -> DataAnalysisOutput:
         """执行规则分析。"""
         from src.utils.logging_config import get_logger
         logger = get_logger()
@@ -27,16 +29,20 @@ class RuleEngineAnalyzer(BaseDataAnalyzer):
             sensor_data = data.get("data", {})
             metadata = data.get("metadata", {})
             
-            # 输入日志
-            logger.info(f"  输入数据类型: {type(data).__name__}")
-            if isinstance(data, dict):
-                logger.info(f"  输入数据键: {list(data.keys())}")
-                if "data" in data and isinstance(data["data"], dict):
-                    logger.info(f"  传感器数据列: {list(data['data'].keys())[:5]}...")
-                if "metadata" in data:
-                    meta = data["metadata"]
-                    logger.info(f"  输入数据行数: {meta.get('row_count', 'N/A')}")
-                    logger.info(f"  输入数据列数: {meta.get('column_count', 'N/A')}")
+            # 使用基类的统一日志输出
+            self._log_input(data, "规则引擎分析器")
+            
+            # 额外的详细信息
+            if self.logger:
+                if isinstance(data, dict):
+                    if "data" in data and isinstance(data["data"], dict):
+                        self.logger.info(f"  传感器数据列: {list(data['data'].keys())[:5]}...")
+                    if "metadata" in data:
+                        meta = data["metadata"]
+                        self.logger.info(f"  输入数据行数: {meta.get('row_count', 'N/A')}")
+                        self.logger.info(f"  输入数据列数: {meta.get('column_count', 'N/A')}")
+                
+                self.logger.info(f"  分析器类型: 规则引擎分析器 (RuleEngineAnalyzer)")
             
             # 执行规则检查
             rule_results = self._check_rules(sensor_data)
@@ -53,21 +59,21 @@ class RuleEngineAnalyzer(BaseDataAnalyzer):
                 "input_metadata": metadata
             }
             
-            # 输出日志
-            logger.info(f"  输出数据类型: {type(result).__name__}")
-            logger.info(f"  输出数据键: {list(result.keys())}")
+            # 使用基类的统一日志输出
+            self._log_output(result, "规则引擎分析器", "规则分析结果 (DataAnalysisOutput)")
             
-            # 显示分析结果详情
-            if "rule_results" in result:
-                rule_results = result["rule_results"]
-                logger.info(f"  规则检查结果: {len(rule_results)} 条规则")
-                for rule_id, rule_result in rule_results.items():
-                    status = "通过" if rule_result.get("passed", False) else "失败"
-                    logger.info(f"    - {rule_id}: {status} ({rule_result.get('message', 'N/A')})")
-            
-            if "analysis_info" in result:
-                analysis_info = result["analysis_info"]
-                logger.info(f"  分析统计: 通过 {analysis_info.get('passed_rules', 0)}/{analysis_info.get('rules_checked', 0)} 条规则")
+            # 额外的详细信息
+            if self.logger:
+                if "rule_results" in result:
+                    rule_results = result["rule_results"]
+                    self.logger.info(f"  规则检查结果: {len(rule_results)} 条规则")
+                    for rule_id, rule_result in rule_results.items():
+                        status = "通过" if rule_result.get("passed", False) else "失败"
+                        self.logger.info(f"    - {rule_id}: {status} ({rule_result.get('message', 'N/A')})")
+                
+                if "analysis_info" in result:
+                    analysis_info = result["analysis_info"]
+                    self.logger.info(f"  分析统计: 通过 {analysis_info.get('passed_rules', 0)}/{analysis_info.get('rules_checked', 0)} 条规则")
             
             return result
             
@@ -239,7 +245,4 @@ class RuleEngineAnalyzer(BaseDataAnalyzer):
             "severity": severity
         }
     
-    def get_algorithm(self) -> str:
-        """获取算法名称。"""
-        return self.algorithm
 

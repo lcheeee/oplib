@@ -1,7 +1,7 @@
 """工作流执行器。"""
 
 import os
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Union
 
 # 兼容无 _sqlite3 的环境：使用 pysqlite3 替代
 try:
@@ -25,7 +25,7 @@ class WorkflowExecutor:
         self.config = kwargs
         self.logger = get_logger()
     
-    async def execute_async(self, flow_func: Callable) -> Any:
+    async def execute_async(self, flow_func: Callable) -> Union[str, Dict[str, Any]]:
         """异步执行工作流。"""
         try:
             # 直接调用流程函数（同步执行）
@@ -33,7 +33,7 @@ class WorkflowExecutor:
         except Exception as e:
             raise WorkflowError(f"工作流执行失败: {e}")
     
-    def execute(self, flow_func: Callable, parameters: Dict[str, Any] = None) -> Any:
+    def execute(self, flow_func: Callable, parameters: Dict[str, Any] = None) -> Union[str, Dict[str, Any]]:
         """同步执行工作流。"""
         try:
             # 直接调用流程函数，传递参数

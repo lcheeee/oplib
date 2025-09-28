@@ -1,7 +1,7 @@
 """工作流构建器。"""
 
 import os
-from typing import Any, Dict, List, Callable, Set
+from typing import Any, Dict, List, Callable, Set, Union
 from pathlib import Path
 
 # 使用简单的装饰器替代 Prefect，避免服务器依赖问题
@@ -36,6 +36,18 @@ from src.utils.logging_config import get_logger
 from ..core.exceptions import WorkflowError
 from ..core.interfaces import LayerType
 from ..core.interfaces import LayeredTask
+from ..core.types import (
+    DataSourceOutput, SensorGroupingOutput, StageDetectionOutput,
+    DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput,
+    ResultFormattingOutput
+)
+
+# 工作流结果类型别名
+WorkflowResult = Union[
+    DataSourceOutput, SensorGroupingOutput, StageDetectionOutput,
+    DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput,
+    ResultFormattingOutput, str
+]
 from ..core.factories import (
     DataSourceFactory, DataProcessingFactory, DataAnalysisFactory,
     ResultMergingFactory, ResultBrokerFactory, WorkflowFactory
@@ -203,7 +215,7 @@ class WorkflowBuilder:
     
     def _execute_data_source_task(self, task_config: Dict[str, Any], 
                                  data_sources: Dict[str, Any], 
-                                 results: Dict[str, Any]) -> Any:
+                                 results: Dict[str, WorkflowResult]) -> DataSourceOutput:
         """执行数据源任务。"""
         source_name = task_config.get("source")
         if not source_name or source_name not in data_sources:
@@ -251,7 +263,7 @@ class WorkflowBuilder:
         return result
     
     def _execute_data_processing_task(self, task_config: Dict[str, Any], 
-                                     results: Dict[str, Any]) -> Any:
+                                     results: Dict[str, WorkflowResult]) -> Union[SensorGroupingOutput, StageDetectionOutput]:
         """执行数据处理任务。"""
         # 获取依赖结果
         depends_on = task_config.get("depends_on", [])
@@ -277,7 +289,7 @@ class WorkflowBuilder:
         return result
     
     def _execute_data_analysis_task(self, task_config: Dict[str, Any], 
-                                   results: Dict[str, Any]) -> Any:
+                                   results: Dict[str, WorkflowResult]) -> DataAnalysisOutput:
         """执行数据分析任务。"""
         # 获取依赖结果
         depends_on = task_config.get("depends_on", [])
@@ -306,8 +318,8 @@ class WorkflowBuilder:
         return result
     
     def _execute_result_merging_task(self, task_config: Dict[str, Any], 
-                                    results: Dict[str, Any], 
-                                    parameters: Dict[str, Any] = None) -> Any:
+                                    results: Dict[str, WorkflowResult], 
+                                    parameters: Dict[str, Any] = None) -> Union[ResultAggregationOutput, ResultValidationOutput, ResultFormattingOutput]:
         """执行结果合并任务。"""
         # 获取依赖结果
         depends_on = task_config.get("depends_on", [])
@@ -334,8 +346,8 @@ class WorkflowBuilder:
         return result
     
     def _execute_result_output_task(self, task_config: Dict[str, Any], 
-                                   results: Dict[str, Any], 
-                                   parameters: Dict[str, Any] = None) -> Any:
+                                   results: Dict[str, WorkflowResult], 
+                                   parameters: Dict[str, Any] = None) -> str:
         """执行结果输出任务。"""
         # 获取依赖结果
         depends_on = task_config.get("depends_on", [])
@@ -420,7 +432,7 @@ class WorkflowBuilder:
             self.logger.info(f"工作流参数: {final_parameters}")
             self.logger.info(f"执行时间字符串: {execution_time_str}")
             
-            results = {}
+            results: Dict[str, WorkflowResult] = {}
             
             for i, task_id in enumerate(order, 1):
                 task_config = task_map[task_id]

@@ -6,10 +6,10 @@ from .interfaces import (
     BaseResultMerger, BaseResultBroker, LayerType
 )
 from .exceptions import WorkflowError
-from src.utils.logging_config import get_logger
+from .base_logger import BaseLogger
 
 
-class DataSourceFactory:
+class DataSourceFactory(BaseLogger):
     """数据源工厂类。"""
     
     _sources: Dict[str, Type[BaseDataSource]] = {}
@@ -22,21 +22,22 @@ class DataSourceFactory:
     @classmethod
     def create_source(cls, source_config: Dict[str, Any]) -> BaseDataSource:
         """创建数据源实例。"""
-        logger = get_logger()
         source_type = source_config.get("type", "csv")
         
         if source_type not in cls._sources:
             raise WorkflowError(f"不支持的数据源类型: {source_type}")
         
-        logger.info(f"  输入参数: {source_config}")
-        logger.info(f"  数据源路径: {source_config.get('path', 'N/A')}")
-        logger.info(f"  数据源类型: {source_type}")
+        # 创建临时实例用于日志输出
+        temp_instance = cls()
+        temp_instance._log_component_info("数据源", source_type, source_config)
         
         source_class = cls._sources[source_type]
         instance = source_class(**source_config)
         
-        logger.info(f"  处理器类型: {type(instance).__name__}")
-        logger.info(f"  处理器算法: {instance.get_algorithm()}")
+        if temp_instance.logger:
+            temp_instance.logger.info(f"  数据源路径: {source_config.get('path', 'N/A')}")
+            temp_instance.logger.info(f"  实例类型: {type(instance).__name__}")
+            temp_instance.logger.info(f"  实例算法: {instance.get_algorithm()}")
         
         return instance
     
@@ -46,7 +47,7 @@ class DataSourceFactory:
         return list(cls._sources.keys())
 
 
-class DataProcessingFactory:
+class DataProcessingFactory(BaseLogger):
     """数据处理工厂类。"""
     
     _processors: Dict[str, Type[BaseDataProcessor]] = {}
@@ -59,19 +60,20 @@ class DataProcessingFactory:
     @classmethod
     def create_processor(cls, processor_config: Dict[str, Any]) -> BaseDataProcessor:
         """创建处理器实例。"""
-        logger = get_logger()
         implementation = processor_config.get("implementation")
         
         if not implementation or implementation not in cls._processors:
             raise WorkflowError(f"不支持的数据处理器: {implementation}")
         
-        logger.info(f"  处理器类型: {implementation}")
-        logger.info(f"  处理器配置: {processor_config}")
+        # 创建临时实例用于日志输出
+        temp_instance = cls()
+        temp_instance._log_component_info("处理器", implementation, processor_config)
         
         processor_class = cls._processors[implementation]
         instance = processor_class(**processor_config)
         
-        logger.info(f"  处理器算法: {instance.get_algorithm()}")
+        if temp_instance.logger:
+            temp_instance.logger.info(f"  处理器算法: {instance.get_algorithm()}")
         
         return instance
     
@@ -81,7 +83,7 @@ class DataProcessingFactory:
         return list(cls._processors.keys())
 
 
-class DataAnalysisFactory:
+class DataAnalysisFactory(BaseLogger):
     """数据分析工厂类。"""
     
     _analyzers: Dict[str, Type[BaseDataAnalyzer]] = {}
@@ -94,24 +96,25 @@ class DataAnalysisFactory:
     @classmethod
     def create_analyzer(cls, analyzer_config: Dict[str, Any]) -> BaseDataAnalyzer:
         """创建分析器实例。"""
-        logger = get_logger()
         implementation = analyzer_config.get("implementation")
         
         if not implementation or implementation not in cls._analyzers:
             raise WorkflowError(f"不支持的数据分析器: {implementation}")
         
-        logger.info(f"  分析器类型: {implementation}")
-        logger.info(f"  分析器配置: {analyzer_config}")
+        # 创建临时实例用于日志输出
+        temp_instance = cls()
+        temp_instance._log_component_info("分析器", implementation, analyzer_config)
         
         analyzer_class = cls._analyzers[implementation]
         instance = analyzer_class(**analyzer_config)
         
-        logger.info(f"  分析器算法: {instance.get_algorithm()}")
-        
-        # 如果有规则索引，显示规则数量
-        rules_index = analyzer_config.get("rules_index", {})
-        if rules_index:
-            logger.info(f"  规则数量: {len(rules_index)}")
+        if temp_instance.logger:
+            temp_instance.logger.info(f"  分析器算法: {instance.get_algorithm()}")
+            
+            # 如果有规则索引，显示规则数量
+            rules_index = analyzer_config.get("rules_index", {})
+            if rules_index:
+                temp_instance.logger.info(f"  规则数量: {len(rules_index)}")
         
         return instance
     
@@ -121,7 +124,7 @@ class DataAnalysisFactory:
         return list(cls._analyzers.keys())
 
 
-class ResultMergingFactory:
+class ResultMergingFactory(BaseLogger):
     """结果合并工厂类。"""
     
     _mergers: Dict[str, Type[BaseResultMerger]] = {}
@@ -134,19 +137,20 @@ class ResultMergingFactory:
     @classmethod
     def create_merger(cls, merger_config: Dict[str, Any]) -> BaseResultMerger:
         """创建合并器实例。"""
-        logger = get_logger()
         implementation = merger_config.get("implementation")
         
         if not implementation or implementation not in cls._mergers:
             raise WorkflowError(f"不支持的结果合并器: {implementation}")
         
-        logger.info(f"  合并器类型: {implementation}")
-        logger.info(f"  合并器配置: {merger_config}")
+        # 创建临时实例用于日志输出
+        temp_instance = cls()
+        temp_instance._log_component_info("合并器", implementation, merger_config)
         
         merger_class = cls._mergers[implementation]
         instance = merger_class(**merger_config)
         
-        logger.info(f"  合并器算法: {instance.get_algorithm()}")
+        if temp_instance.logger:
+            temp_instance.logger.info(f"  合并器算法: {instance.get_algorithm()}")
         
         return instance
     
@@ -156,7 +160,7 @@ class ResultMergingFactory:
         return list(cls._mergers.keys())
 
 
-class ResultBrokerFactory:
+class ResultBrokerFactory(BaseLogger):
     """结果代理工厂类。"""
     
     _brokers: Dict[str, Type[BaseResultBroker]] = {}
@@ -169,14 +173,14 @@ class ResultBrokerFactory:
     @classmethod
     def create_broker(cls, broker_config: Dict[str, Any]) -> BaseResultBroker:
         """创建代理器实例。"""
-        logger = get_logger()
         implementation = broker_config.get("implementation")
         
         if not implementation or implementation not in cls._brokers:
             raise WorkflowError(f"不支持的结果代理器: {implementation}")
         
-        logger.info(f"  输出器类型: {implementation}")
-        logger.info(f"  输出器配置: {broker_config}")
+        # 创建临时实例用于日志输出
+        temp_instance = cls()
+        temp_instance._log_component_info("输出器", implementation, broker_config)
         
         broker_class = cls._brokers[implementation]
         
@@ -188,7 +192,9 @@ class ResultBrokerFactory:
             broker_params.update(parameters)
         
         instance = broker_class(**broker_params)
-        logger.info(f"  输出器算法: {instance.get_broker_type()}")
+        
+        if temp_instance.logger:
+            temp_instance.logger.info(f"  输出器算法: {instance.get_broker_type()}")
         
         return instance
     

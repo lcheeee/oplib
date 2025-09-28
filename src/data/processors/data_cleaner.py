@@ -1,8 +1,9 @@
 """数据清洗器。"""
 
 import numpy as np
-from typing import Any, Dict
+from typing import Any, Dict, Union
 from ...core.interfaces import BaseDataProcessor
+from ...core.types import DataSourceOutput, SensorGroupingOutput, StageDetectionOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -11,10 +12,11 @@ class DataCleaner(BaseDataProcessor):
     
     def __init__(self, algorithm: str = "missing_value_imputation", 
                  method: str = "linear_interpolation", **kwargs: Any) -> None:
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.algorithm = algorithm
         self.method = method
     
-    def process(self, data: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
+    def process(self, data: DataSourceOutput, **kwargs: Any) -> Union[SensorGroupingOutput, StageDetectionOutput]:
         """处理数据清洗。"""
         try:
             # 获取数据
@@ -91,7 +93,4 @@ class DataCleaner(BaseDataProcessor):
         
         return interpolated_values
     
-    def get_algorithm(self) -> str:
-        """获取算法名称。"""
-        return self.algorithm
 

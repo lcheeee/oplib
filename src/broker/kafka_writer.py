@@ -2,6 +2,7 @@
 
 from typing import Any, Dict
 from ..core.interfaces import BaseResultBroker
+from ..core.types import ResultFormattingOutput
 
 
 class KafkaWriter(BaseResultBroker):
@@ -9,17 +10,15 @@ class KafkaWriter(BaseResultBroker):
     
     def __init__(self, algorithm: str = "producer", 
                  topic: str = None, brokers: list = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.algorithm = algorithm
         self.topic = topic
         self.brokers = brokers or ["localhost:9092"]
         self.timeout = kwargs.get("timeout", 30)
     
-    def broker(self, result: Dict[str, Any], **kwargs: Any) -> str:
+    def broker(self, result: ResultFormattingOutput, **kwargs: Any) -> str:
         """输出到Kafka。"""
         # TODO: 实现Kafka写入功能
         raise NotImplementedError("Kafka写入功能尚未实现")
     
-    def get_broker_type(self) -> str:
-        """获取算法名称。"""
-        return self.algorithm
 

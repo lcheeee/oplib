@@ -2,6 +2,7 @@
 
 from typing import Any, Dict, List
 from ...core.interfaces import BaseResultMerger
+from ...core.types import DataAnalysisOutput, ResultAggregationOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -10,10 +11,11 @@ class ResultAggregator(BaseResultMerger):
     
     def __init__(self, algorithm: str = "weighted_average", 
                  weights: Dict[str, float] = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.algorithm = algorithm
         self.weights = weights or {}
     
-    def merge(self, results: List[Dict[str, Any]], **kwargs: Any) -> Dict[str, Any]:
+    def merge(self, results: List[DataAnalysisOutput], **kwargs: Any) -> ResultAggregationOutput:
         """合并结果。"""
         from src.utils.logging_config import get_logger
         logger = get_logger()
@@ -46,18 +48,20 @@ class ResultAggregator(BaseResultMerger):
                 }
             }
             
-            # 输出日志
-            logger.info(f"  输出数据类型: {type(result).__name__}")
-            logger.info(f"  输出数据键: {list(result.keys())}")
+            # 使用基类的统一日志输出
+            self._log_output(result, "结果聚合器", "结果聚合输出 (ResultAggregationOutput)")
             
-            # 显示合并结果详情
-            if "aggregated_result" in result:
-                aggregated = result["aggregated_result"]
-                logger.info(f"  聚合结果: {list(aggregated.keys()) if isinstance(aggregated, dict) else 'N/A'}")
-            
-            if "aggregation_info" in result:
-                agg_info = result["aggregation_info"]
-                logger.info(f"  聚合统计: 算法={agg_info.get('algorithm', 'N/A')}, 输入数量={agg_info.get('input_count', 'N/A')}")
+            # 额外的详细信息
+            if self.logger:
+                if "aggregated_result" in result:
+                    aggregated = result["aggregated_result"]
+                    self.logger.info(f"  聚合结果: {list(aggregated.keys()) if isinstance(aggregated, dict) else 'N/A'}")
+                    if "rule_results" in aggregated:
+                        self.logger.info(f"  包含规则分析结果: {len(aggregated['rule_results'])} 条规则")
+                
+                if "aggregation_info" in result:
+                    agg_info = result["aggregation_info"]
+                    self.logger.info(f"  聚合统计: 算法={agg_info.get('algorithm', 'N/A')}, 输入数量={agg_info.get('input_count', 'N/A')}")
             
             return result
             
@@ -68,11 +72,22 @@ class ResultAggregator(BaseResultMerger):
         """加权平均合并。"""
         aggregated = {}
         
-        # 收集所有数值结果
+        # 首先处理规则分析结果
+        for result in results:
+            if isinstance(result, dict):
+                # 直接保留规则分析结果
+                if "rule_results" in result:
+                    aggregated["rule_results"] = result["rule_results"]
+                if "analysis_info" in result:
+                    aggregated["analysis_info"] = result["analysis_info"]
+                if "input_metadata" in result:
+                    aggregated["input_metadata"] = result["input_metadata"]
+        
+        # 收集所有数值结果进行加权平均
         numeric_results = {}
         for i, result in enumerate(results):
             for key, value in result.items():
-                if isinstance(value, (int, float)):
+                if isinstance(value, (int, float)) and key not in ["rule_results", "analysis_info", "input_metadata"]:
                     if key not in numeric_results:
                         numeric_results[key] = []
                     numeric_results[key].append(value)
@@ -157,7 +172,4 @@ class ResultAggregator(BaseResultMerger):
         
         return aggregated
     
-    def get_algorithm(self) -> str:
-        """获取算法名称。"""
-        return self.algorithm
 

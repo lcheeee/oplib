@@ -2,6 +2,7 @@
 
 from typing import Any, Dict
 from ...core.interfaces import BaseDataProcessor
+from ...core.types import DataSourceOutput, StageDetectionOutput, StageInfo, Metadata
 from ...core.exceptions import WorkflowError
 
 
@@ -10,11 +11,12 @@ class StageDetectorProcessor(BaseDataProcessor):
     
     def __init__(self, algorithm: str = "rule_based", 
                  stage_config: str = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.algorithm = algorithm
         self.stage_config = stage_config
         self.process_id = kwargs.get("process_id", "default_process")
     
-    def process(self, data: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
+    def process(self, data: DataSourceOutput, **kwargs: Any) -> StageDetectionOutput:
         """处理阶段检测。"""
         try:
             # 获取数据
@@ -26,7 +28,7 @@ class StageDetectorProcessor(BaseDataProcessor):
             stage_result = self._detect_stages(sensor_data)
             
             # 构建结果
-            result = {
+            result: StageDetectionOutput = {
                 "stage_info": stage_result,
                 "algorithm": self.algorithm,
                 "process_id": self.process_id,
@@ -38,7 +40,7 @@ class StageDetectorProcessor(BaseDataProcessor):
         except Exception as e:
             raise WorkflowError(f"阶段检测处理失败: {e}")
     
-    def _detect_stages(self, sensor_data: Dict[str, Any]) -> Dict[str, Any]:
+    def _detect_stages(self, sensor_data: Dict[str, Any]) -> StageInfo:
         """执行阶段检测算法。"""
         # 模拟阶段检测结果
         return {
@@ -51,7 +53,4 @@ class StageDetectorProcessor(BaseDataProcessor):
             "algorithm_used": self.algorithm
         }
     
-    def get_algorithm(self) -> str:
-        """获取算法名称。"""
-        return self.algorithm
 

@@ -4,7 +4,9 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 from ..core.interfaces import BaseResultBroker
+from ..core.types import ResultFormattingOutput
 from ..core.exceptions import WorkflowError
+from ..core.base_logger import handle_workflow_errors
 from src.utils.path_utils import resolve_path
 
 
@@ -13,58 +15,54 @@ class FileWriter(BaseResultBroker):
     
     def __init__(self, algorithm: str = "json_writer", 
                  path: str = None, format: str = "json", **kwargs: Any) -> None:
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.algorithm = algorithm
         self.path = path
         self.format = format
         self.base_dir = kwargs.get("base_dir", ".")
     
-    def broker(self, result: Dict[str, Any], **kwargs: Any) -> str:
+    @handle_workflow_errors("文件写入")
+    def broker(self, result: ResultFormattingOutput, **kwargs: Any) -> str:
         """输出到文件。"""
-        from src.utils.logging_config import get_logger
-        logger = get_logger()
+        # 输入日志
+        self._log_input(result, "文件写入器")
+        if self.logger:
+            if not isinstance(result, dict):
+                self.logger.info(f"  输入数据: {str(result)[:100]}...")
         
-        try:
-            # 输入日志
-            logger.info(f"  输入数据类型: {type(result).__name__}")
-            if isinstance(result, dict):
-                logger.info(f"  输入数据键: {list(result.keys())}")
-            else:
-                logger.info(f"  输入数据: {str(result)[:100]}...")
-            
-            # 检查路径是否有效
-            if not self.path:
-                raise WorkflowError("文件路径未配置")
-            
-            # 解析路径模板
-            actual_path = self._resolve_path_template(self.path, kwargs)
-            
-            # 解析绝对路径
-            full_path = resolve_path(self.base_dir, actual_path)
-            
-            logger.info(f"  输出文件: {full_path}")
-            logger.info(f"  输出格式: {self.format}")
-            
-            # 确保目录存在
-            Path(full_path).parent.mkdir(parents=True, exist_ok=True)
-            
-            # 根据格式写入文件
-            if self.format == "json":
-                self._write_json(full_path, result)
-            elif self.format == "yaml":
-                self._write_yaml(full_path, result)
-            elif self.format == "csv":
-                self._write_csv(full_path, result)
-            else:
-                self._write_text(full_path, result)
-            
-            # 输出日志
-            logger.info(f"  输出结果: {str(full_path)}")
-            logger.info(f"  输出类型: {type(str(full_path)).__name__}")
-            
-            return str(full_path)
-            
-        except Exception as e:
-            raise WorkflowError(f"文件写入失败: {e}")
+        # 检查路径是否有效
+        if not self.path:
+            raise WorkflowError("文件路径未配置")
+        
+        # 解析路径模板
+        actual_path = self._resolve_path_template(self.path, kwargs)
+        
+        # 解析绝对路径
+        full_path = resolve_path(self.base_dir, actual_path)
+        
+        if self.logger:
+            self.logger.info(f"  输出文件: {full_path}")
+            self.logger.info(f"  输出格式: {self.format}")
+        
+        # 确保目录存在
+        Path(full_path).parent.mkdir(parents=True, exist_ok=True)
+        
+        # 根据格式写入文件
+        if self.format == "json":
+            self._write_json(full_path, result)
+        elif self.format == "yaml":
+            self._write_yaml(full_path, result)
+        elif self.format == "csv":
+            self._write_csv(full_path, result)
+        else:
+            self._write_text(full_path, result)
+        
+        # 输出日志
+        if self.logger:
+            self.logger.info(f"  输出结果: {str(full_path)}")
+            self.logger.info(f"  输出类型: {type(str(full_path)).__name__}")
+        
+        return str(full_path)
     
     def _resolve_path_template(self, path_template: str, kwargs: Dict[str, Any]) -> str:
         """解析路径模板，支持{var}格式的变量替换。"""
@@ -116,7 +114,4 @@ class FileWriter(BaseResultBroker):
         with open(path, 'w', encoding='utf-8') as f:
             f.write(str(result))
     
-    def get_broker_type(self) -> str:
-        """获取算法名称。"""
-        return self.algorithm
 

@@ -2,6 +2,7 @@
 
 from typing import Any, Dict
 from ...core.interfaces import BaseDataSource
+from ...core.types import DataSourceOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -9,11 +10,13 @@ class DatabaseDataSource(BaseDataSource):
     """数据库数据源。"""
     
     def __init__(self, connection_string: str, query: str, **kwargs: Any) -> None:
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.connection_string = connection_string
         self.query = query
         self.timeout = kwargs.get("timeout", 30)
+        self.algorithm = "database_query"  # 设置算法名称
     
-    def read(self, **kwargs: Any) -> Dict[str, Any]:
+    def read(self, **kwargs: Any) -> DataSourceOutput:
         """从数据库读取数据。"""
         # TODO: 实现实际的数据库查询逻辑
         raise WorkflowError("数据库数据源尚未实现，请使用CSV数据源")
@@ -25,7 +28,4 @@ class DatabaseDataSource(BaseDataSource):
         except Exception:
             return False
     
-    def get_algorithm(self) -> str:
-        """获取算法名称。"""
-        return "database_query"
 

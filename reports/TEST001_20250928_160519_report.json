@@ -1,0 +1,38 @@
+{
+  "formatted_result": {
+    "analysis_summary": {
+      "total_results": 1,
+      "status": "completed"
+    },
+    "results": [
+      {
+        "validation_result": {
+          "is_consistent": true,
+          "inconsistencies": [],
+          "consistency_score": 1.0
+        },
+        "validation_info": {
+          "algorithm": "consistency_check",
+          "input_count": 1,
+          "validation_rules": null
+        }
+      }
+    ],
+    "metadata": {
+      "format_version": "1.0",
+      "generated_by": "OPLib",
+      "algorithm": "standard_format",
+      "timing": {
+        "request_time": "2025-09-28T16:05:19.617911",
+        "execution_time": "20250928_160519",
+        "generation_time": "2025-09-28T16:05:19.625964"
+      }
+    }
+  },
+  "format_info": {
+    "algorithm": "standard_format",
+    "output_format": "json",
+    "include_metadata": true,
+    "input_count": 1
+  }
+}

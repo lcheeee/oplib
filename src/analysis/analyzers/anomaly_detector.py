@@ -1,8 +1,9 @@
 """异常检测器。"""
 
 import numpy as np
-from typing import Any, Dict
+from typing import Any, Dict, Union
 from ...core.interfaces import BaseDataAnalyzer
+from ...core.types import SensorGroupingOutput, StageDetectionOutput, DataAnalysisOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -11,10 +12,11 @@ class AnomalyDetector(BaseDataAnalyzer):
     
     def __init__(self, algorithm: str = "isolation_forest", 
                  contamination: float = 0.1, **kwargs: Any) -> None:
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.algorithm = algorithm
         self.contamination = contamination
     
-    def analyze(self, data: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
+    def analyze(self, data: Union[SensorGroupingOutput, StageDetectionOutput], **kwargs: Any) -> DataAnalysisOutput:
         """执行异常检测。"""
         try:
             # 获取数据
@@ -194,7 +196,4 @@ class AnomalyDetector(BaseDataAnalyzer):
             "contamination_rate": len(anomaly_indices) / len(data)
         }
     
-    def get_algorithm(self) -> str:
-        """获取算法名称。"""
-        return self.algorithm
 

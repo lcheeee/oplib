@@ -2,6 +2,7 @@
 
 from typing import Any, Dict
 from ...core.interfaces import BaseDataSource
+from ...core.types import DataSourceOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -10,13 +11,15 @@ class KafkaDataSource(BaseDataSource):
     
     def __init__(self, topic: str, brokers: list, group_id: str = "oplib_consumer",
                  **kwargs: Any) -> None:
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.topic = topic
         self.brokers = brokers
         self.group_id = group_id
         self.timeout = kwargs.get("timeout", 1000)
         self.max_records = kwargs.get("max_records", 1000)
+        self.algorithm = "kafka_consumer"  # 设置算法名称
     
-    def read(self, **kwargs: Any) -> Dict[str, Any]:
+    def read(self, **kwargs: Any) -> DataSourceOutput:
         """从Kafka读取数据。"""
         # TODO: 实现实际的Kafka消费逻辑
         raise WorkflowError("Kafka数据源尚未实现，请使用CSV数据源")
@@ -30,7 +33,4 @@ class KafkaDataSource(BaseDataSource):
         except Exception:
             return False
     
-    def get_algorithm(self) -> str:
-        """获取算法名称。"""
-        return "kafka_consumer"
 

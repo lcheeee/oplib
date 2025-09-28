@@ -125,7 +125,7 @@ workflows:
             parameters:
               output_format: "json"
               include_metadata: true
-            depends_on: ["result_validation"]
+            depends_on: ["result_aggregation"]
 
       # 结果输出层
       - layer: "result_output"
