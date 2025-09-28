@@ -15,29 +15,30 @@ def setup_logging(log_level: str = "info") -> logging.Logger:
     Returns:
         配置好的logger实例
     """
-    # 创建logger
-    logger = logging.getLogger("oplib")
-    logger.setLevel(getattr(logging, log_level.upper()))
+    # 设置根logger级别
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, log_level.upper()))
     
     # 清除现有的处理器
-    logger.handlers.clear()
+    root_logger.handlers.clear()
     
     # 创建控制台处理器
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(getattr(logging, log_level.upper()))
     
-    # 创建格式化器（与uvicorn格式一致）
+    # 创建格式化器
     formatter = logging.Formatter(
         fmt='%(asctime)s | %(levelname)-8s | %(name)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     console_handler.setFormatter(formatter)
     
-    # 添加处理器
-    logger.addHandler(console_handler)
+    # 添加处理器到根logger
+    root_logger.addHandler(console_handler)
     
-    # 设置不传播到父logger，避免重复输出
-    logger.propagate = False
+    # 创建oplib专用logger
+    logger = logging.getLogger("oplib")
+    logger.setLevel(getattr(logging, log_level.upper()))
     
     return logger
 

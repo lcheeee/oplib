@@ -122,6 +122,34 @@ class ConfigManager:
         """获取规范配置。"""
         return self.get_config("process_specification")
     
+    def get_workflow_defaults(self, workflow_name: str = "curing_analysis") -> Dict[str, Any]:
+        """获取工作流的默认参数值。"""
+        workflow_config = self.get_workflow_config()
+        workflows = workflow_config.get("workflows", {})
+        workflow = workflows.get(workflow_name, {})
+        parameters = workflow.get("parameters", {})
+        
+        defaults = {}
+        for param_name, param_config in parameters.items():
+            if isinstance(param_config, dict) and "default" in param_config:
+                defaults[param_name] = param_config["default"]
+        
+        return defaults
+    
+    def get_workflow_required_params(self, workflow_name: str = "curing_analysis") -> list[str]:
+        """获取工作流的必需参数列表。"""
+        workflow_config = self.get_workflow_config()
+        workflows = workflow_config.get("workflows", {})
+        workflow = workflows.get(workflow_name, {})
+        parameters = workflow.get("parameters", {})
+        
+        required_params = []
+        for param_name, param_config in parameters.items():
+            if isinstance(param_config, dict) and param_config.get("required", False):
+                required_params.append(param_name)
+        
+        return required_params
+    
     def override_config_path(self, config_name: str, new_path: str) -> None:
         """覆盖配置文件路径并重新加载。"""
         self.startup_config["config_files"][config_name] = new_path

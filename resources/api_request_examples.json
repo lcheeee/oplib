@@ -10,7 +10,7 @@
       "vacuum_lines": ["VL2"],
       "leading_thermocouples": ["TC54", "TC10"],
       "lagging_thermocouples": ["TC50", "TC14"],
-      "calculation_date": "2022/5/30"
+      "calculation_date": "20220530"
     },
     "inputs": {
       "data_source": "resources/test_data_1.csv",
@@ -21,7 +21,7 @@
     "workflow_name": "curing_analysis",
     "parameters": {
       "series_id": "CA00099852.4",
-      "calculation_date": "2022/5/30"
+      "calculation_date": "20220530"
     },
     "inputs": {
       "data_source": "resources/test_data_1.csv"
@@ -33,7 +33,7 @@
       "series_id": "CA00099852.5",
       "material": "CMS-CP-309",
       "thermocouples": ["TC55", "TC11", "TC51", "TC15"],
-      "calculation_date": "2022/6/1"
+      "calculation_date": "20220601"
     },
     "inputs": {
       "data_source": "resources/test_data_2.csv"
@@ -43,7 +43,7 @@
     "workflow_name": "curing_analysis",
     "parameters": {
       "series_id": "CA00099852.6",
-      "calculation_date": "2022/6/2"
+      "calculation_date": "20220602"
     },
     "inputs": {
       "online_data": true

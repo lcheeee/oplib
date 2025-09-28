@@ -1,14 +1,17 @@
-version: v1
+version: v2
 
 # 工作流缓存配置
 cache:
-  max_workflows: 2  # 最大缓存工作流数量，默认2个
+  max_workflows: 5
 
+# 工作流定义
 workflows:
   curing_analysis:
     name: "热压罐固化分析工作流"
-    description: "基于CPS7020规范的固化工艺数据分析"
+    description: "基于传感器数据的固化过程分析工作流"
+    process_id: "CURING_001"
     
+    # 工作流参数
     parameters:
       series_id:
         type: "string"
@@ -28,80 +31,117 @@ workflows:
         description: "是否通大气"
       thermocouples:
         type: "array"
-        default: ["TC54", "TC10", "TC50", "TC14"]
+        default: ["PTC10", "PTC11", "PTC23", "PTC24"]
         description: "参与计算的热电偶"
       vacuum_lines:
         type: "array"
-        default: ["VL2"]
+        default: ["VPRB1"]
         description: "参与计算的真空管路"
       leading_thermocouples:
         type: "array"
-        default: ["TC54", "TC10"]
+        default: ["PTC10", "PTC11"]
         description: "领先偶"
       lagging_thermocouples:
         type: "array"
-        default: ["TC50", "TC14"]
+        default: ["PTC23", "PTC24"]
         description: "滞后偶"
+      pressure_sensors:
+        type: "array"
+        default: ["PRESS"]
+        description: "压力传感器"
       calculation_date:
         type: "string"
         required: true
-        description: "计算日期"
-    
-    inputs:
-      data_source:
+        description: "计算日期，格式：YYYYMMDD，如：20241201"
+
+    # 数据源配置
+    data_sources:
+      primary:
+        type: "csv"
+        path: "{input_file}"
+        format: "sensor_data"
+        timestamp_column: "timestamp"
+
+    # 任务流程配置
+    workflow:
+      # 数据源获取层
+      - layer: "data_source"
+        tasks:
+          - id: "load_primary_data"
+            implementation: "data_loader"
+            source: "primary"
+            depends_on: []
+
+      # 数据处理层
+      - layer: "data_processing"
+        tasks:
+          - id: "sensor_grouping"
+            implementation: "sensor_grouper"
+            algorithm: "hierarchical_clustering"
+            parameters:
+              calculation_config: "config/calculation_definitions.yaml"
+            depends_on: ["load_primary_data"]
+            
+          - id: "stage_detection"
+            implementation: "stage_detector"
+            algorithm: "rule_based"
+            parameters:
+              stage_config: "config/process_stages.yaml"
+            depends_on: ["load_primary_data", "sensor_grouping"]
+
+      # 数据分析层
+      - layer: "data_analysis"
+        tasks:
+          - id: "rule_compliance"
+            implementation: "rule_engine"
+            algorithm: "compliance_checker"
+            parameters:
+              rule_config: "config/process_rules.yaml"
+              spec_config: "config/process_specification.yaml"
+              calculation_config: "config/calculation_definitions.yaml"
+            depends_on: ["stage_detection", "sensor_grouping"]
+
+      # 结果合并层
+      - layer: "result_merging"
+        tasks:
+          - id: "result_aggregation"
+            implementation: "result_aggregator"
+            algorithm: "weighted_average"
+            parameters:
+              weights:
+                rule_compliance: 1.0
+            depends_on: ["rule_compliance"]
+            
+          - id: "result_validation"
+            implementation: "result_validator"
+            algorithm: "consistency_check"
+            parameters:
+              validation_rules: "config/result_validation.yaml"
+            depends_on: ["result_aggregation"]
+            
+          - id: "result_formatting"
+            implementation: "result_formatter"
+            algorithm: "standard_format"
+            parameters:
+              output_format: "json"
+              include_metadata: true
+            depends_on: ["result_validation"]
+
+      # 结果输出层
+      - layer: "result_output"
+        tasks:
+          - id: "save_local_report"
+            implementation: "file_writer"
+            algorithm: "json_writer"
+            parameters:
+              path: "reports/{series_id}_{execution_time}_report.json"
+              format: "json"
+            depends_on: ["result_formatting"]
+
+    # 结果输出配置
+    result_outputs:
+      local_file:
         type: "file"
-        format: "csv"
-        description: "传感器数据文件"
-        required: true
-      online_data:
-        type: "database"
-        connection: "opcua_connection"
-        description: "在线数据源（可选）"
-        required: false
-    
-    tasks:
-      - id: "load_data"
-        type: "input"
-        implementation: "prefect_csv_loader"
-        parameters:
-          file_path: "{input_file}"
-          timestamp_column: "timestamp"
-        
-      - id: "group_sensors"
-        type: "processing"
-        implementation: "sensor_grouper"
-        parameters:
-          calculation_config: "config/calculation_definitions.yaml"
-        depends_on: ["load_data"]
-        
-      - id: "detect_stages"
-        type: "processing"
-        implementation: "stage_detector"
-        parameters:
-          stage_config: "config/process_stages.yaml"
-        depends_on: ["load_data", "group_sensors"]
-        
-      - id: "check_rules"
-        type: "validation"
-        implementation: "rule_engine_checker"
-        parameters:
-          spec_config: "config/process_specification.yaml"
-          rule_config: "config/process_rules.yaml"
-          calculation_config: "config/calculation_definitions.yaml"
-        depends_on: ["detect_stages", "group_sensors"]
-        
-      - id: "generate_report"
-        type: "output"
-        implementation: "report_generator"
-        parameters:
-          template: "curing_report"
-          format: "json"
-        depends_on: ["check_rules"]
-    
-    outputs:
-      report:
-        type: "file"
-        path: "reports/{series_id}_report.json"
-      metrics:
-        type: "data"
-        path: "metrics/{series_id}_metrics.json"
+        path: "reports/{series_id}_{execution_time}_report.json"
+        format: "json"
+

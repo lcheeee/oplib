@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime
 from contextlib import asynccontextmanager
 
-from src.workflow.builder import WorkflowBuilder
+from src.workflow import WorkflowBuilder
 from src.workflow.executor import WorkflowExecutor
 from src.workflow.cache import workflow_cache, calculate_config_hash
 from src.config.manager import ConfigManager
@@ -135,19 +135,30 @@ def apply_parameter_overrides(config: Dict[str, Any], parameters: Optional[Workf
 
 def apply_input_overrides(config: Dict[str, Any], inputs: Optional[WorkflowInputs]) -> Dict[str, Any]:
     """应用输入数据覆盖。"""
+    logger.debug(f"apply_input_overrides 输入: inputs={inputs}")
+    
     if not inputs:
+        logger.debug("inputs 为空，返回原配置")
         return config
     
     # 创建配置副本
     updated_config = config.copy()
     
-    # 更新工作流输入
-    if "inputs" in updated_config:
-        input_dict = inputs.dict(exclude_unset=True)
-        for key, value in input_dict.items():
-            if value is not None:
-                updated_config["inputs"][key] = value
+    # 确保 inputs 部分存在
+    if "inputs" not in updated_config:
+        updated_config["inputs"] = {}
+        logger.debug("创建 inputs 部分")
     
+    # 更新工作流输入
+    input_dict = inputs.dict(exclude_unset=True)
+    logger.debug(f"输入字典: {input_dict}")
+    
+    for key, value in input_dict.items():
+        if value is not None:
+            updated_config["inputs"][key] = value
+            logger.debug(f"设置 inputs[{key}] = {value}")
+    
+    logger.debug(f"更新后配置的 inputs: {updated_config.get('inputs', {})}")
     return updated_config
 
 def validate_and_apply_defaults(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -157,16 +168,12 @@ def validate_and_apply_defaults(config: Dict[str, Any]) -> Dict[str, Any]:
     # 处理 parameters 默认值
     if "parameters" in updated_config:
         params = updated_config["parameters"]
-        defaults = {
-            "specification": "CPS7020",
-            "material": "CMS-CP-308", 
-            "atmosphere_control": False,
-            "thermocouples": ["PTC10", "PTC11", "PTC23", "PTC24"],
-            "vacuum_lines": ["VPRB1"],
-            "leading_thermocouples": ["PTC10", "PTC11"],
-            "lagging_thermocouples": ["PTC23", "PTC24"],
-            "pressure_sensors": ["PRESS"]
-        }
+        
+        if not config_manager:
+            raise ConfigurationError("配置管理器未初始化")
+        
+        # 从配置管理器获取默认值
+        defaults = config_manager.get_workflow_defaults()
         
         missing_params = []
         used_defaults = []
@@ -176,8 +183,9 @@ def validate_and_apply_defaults(config: Dict[str, Any]) -> Dict[str, Any]:
                 params[param] = default_value
                 used_defaults.append(f"{param}={default_value}")
         
-        # 检查必需参数
-        required_params = ["series_id", "calculation_date"]
+        # 检查必需参数 - 从配置管理器获取
+        required_params = config_manager.get_workflow_required_params()
+        
         for param in required_params:
             if param not in params or not params[param]:
                 missing_params.append(param)
@@ -226,6 +234,7 @@ async def run_workflow(request: WorkflowRequest):
         
         # 应用输入覆盖
         logger.info("应用输入覆盖...")
+        logger.debug(f"request.inputs: {request.inputs}")
         config = apply_input_overrides(config, request.inputs)
         
         # 验证参数并应用默认值
@@ -247,8 +256,8 @@ async def run_workflow(request: WorkflowRequest):
         if config_manager is None:
             raise HTTPException(status_code=500, detail="配置管理器未初始化")
         
-        # 提取特定工作流的配置
-        workflow_def = workflow_info["config"]
+        # 使用已经应用了输入覆盖的配置
+        workflow_def = config
         
         # 计算配置哈希值
         config_hash = calculate_config_hash(workflow_def)
@@ -273,7 +282,17 @@ async def run_workflow(request: WorkflowRequest):
         # 执行工作流
         logger.info("\n开始执行工作流...")
         executor = WorkflowExecutor()
-        result = executor.execute_with_monitoring(flow_fn)
+        
+        # 准备传递给工作流的参数
+        workflow_parameters = config.get("parameters", {})
+        
+        # 添加请求时间到参数中
+        request_time = datetime.now()
+        workflow_parameters["request_time"] = request_time.isoformat()
+        
+        logger.info(f"传递给工作流的参数: {workflow_parameters}")
+        
+        result = executor.execute_with_monitoring(flow_fn, workflow_parameters)
         execution_time = (datetime.now() - start_time).total_seconds()
         
         if result["success"]:
@@ -335,15 +354,23 @@ async def health_check():
 
 def main(startup_config_path: str = "config/startup_config.yaml", log_level: str = None):
     """启动OPLib工作流API服务。"""
+    # 检查启动配置文件
+    startup_config_file = Path(startup_config_path)
+    if not startup_config_file.exists():
+        print(f"错误: 启动配置文件不存在: {startup_config_path}")
+        return
+    
+    # 初始化配置管理器（只初始化一次）
+    try:
+        config_manager = ConfigManager(startup_config_path)
+        startup_params = config_manager.get_startup_params()
+    except Exception as e:
+        print(f"无法初始化配置管理器: {e}")
+        return
+    
     # 如果未指定日志级别，从配置文件读取
     if log_level is None:
-        try:
-            config_manager = ConfigManager(startup_config_path)
-            startup_params = config_manager.get_startup_params()
-            log_level = startup_params.get('log_level', 'info')
-        except Exception as e:
-            print(f"无法从配置文件读取日志级别，使用默认值: {e}")
-            log_level = 'info'
+        log_level = startup_params.get('log_level', 'info')
     
     # 设置日志级别
     setup_logging(log_level)
@@ -351,80 +378,30 @@ def main(startup_config_path: str = "config/startup_config.yaml", log_level: str
     logger.info("=" * 50)
     logger.info("OPLib 工作流API服务")
     logger.info("=" * 50)
-    
-    # 检查启动配置文件
-    startup_config_file = Path(startup_config_path)
-    if not startup_config_file.exists():
-        logger.error(f"错误: 启动配置文件不存在: {startup_config_path}")
-        return
-    
     logger.info(f"使用启动配置: {startup_config_path}")
+    logger.info(f"基础目录: {startup_params['base_dir']}")
+    logger.info(f"调试模式: {startup_params['debug']}")
+    logger.info(f"服务地址: {startup_params['host']}:{startup_params['port']}")
     
+    # 预加载工作流注册表
+    logger.info("正在启动 OPLib 工作流API服务...")
+    load_workflow_registry()
+    logger.info(f"服务启动完成，已加载 {len(workflow_registry)} 个工作流配置")
+    
+    logger.info("\n启动服务...")
+    logger.info(f"API文档: http://{startup_params['host']}:{startup_params['port']}/docs")
+    logger.info("按 Ctrl+C 停止服务")
+    logger.info("=" * 50)
+    
+    import uvicorn
+    
+    # 启动uvicorn服务器
     try:
-        # 初始化配置管理器
-        config_manager = ConfigManager(startup_config_path)
-        startup_params = config_manager.get_startup_params()
-        
-        logger.info(f"基础目录: {startup_params['base_dir']}")
-        logger.info(f"调试模式: {startup_params['debug']}")
-        logger.info(f"服务地址: {startup_params['host']}:{startup_params['port']}")
-        
-        # 预加载工作流注册表
-        logger.info("正在启动 OPLib 工作流API服务...")
-        load_workflow_registry()
-        logger.info(f"服务启动完成，已加载 {len(workflow_registry)} 个工作流配置")
-        
-        logger.info("\n启动服务...")
-        logger.info(f"API文档: http://{startup_params['host']}:{startup_params['port']}/docs")
-        logger.info("按 Ctrl+C 停止服务")
-        logger.info("=" * 50)
-        
-        import uvicorn
-        import uvicorn.config
-        
-        # 配置uvicorn日志级别
-        uvicorn_log_level = log_level or startup_params.get('log_level', 'info')
-        
-        # 设置uvicorn的日志配置
-        uvicorn.config.LOGGING_CONFIG = {
-            "version": 1,
-            "disable_existing_loggers": False,
-            "formatters": {
-                "default": {
-                    "format": "%(asctime)s | %(levelname)-8s | %(name)s - %(message)s",
-                    "datefmt": "%Y-%m-%d %H:%M:%S",
-                },
-                "access": {
-                    "format": "%(asctime)s | %(levelname)-8s | %(name)s - %(message)s",
-                    "datefmt": "%Y-%m-%d %H:%M:%S",
-                },
-            },
-            "handlers": {
-                "default": {
-                    "formatter": "default",
-                    "class": "logging.StreamHandler",
-                    "stream": "ext://sys.stdout",
-                },
-                "access": {
-                    "formatter": "access",
-                    "class": "logging.StreamHandler",
-                    "stream": "ext://sys.stdout",
-                },
-            },
-            "loggers": {
-                "uvicorn": {"handlers": ["default"], "level": uvicorn_log_level.upper(), "propagate": False},
-                "uvicorn.error": {"handlers": ["default"], "level": uvicorn_log_level.upper(), "propagate": False},
-                "uvicorn.access": {"handlers": ["access"], "level": uvicorn_log_level.upper(), "propagate": False},
-            },
-        }
-        
-        # 启动uvicorn服务器
         uvicorn.run(
             app,
             host=startup_params['host'],
             port=startup_params['port'],
             reload=startup_params['reload'],
-            log_level=uvicorn_log_level,
             access_log=True
         )
     except KeyboardInterrupt:

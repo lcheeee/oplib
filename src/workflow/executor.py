@@ -14,9 +14,8 @@ except Exception:  # pragma: no cover
     except Exception:
         pass
 
-from prefect import get_client
 from ..core.exceptions import WorkflowError
-from ..utils.logging_config import get_logger
+from src.utils.logging_config import get_logger
 
 
 class WorkflowExecutor:
@@ -24,31 +23,28 @@ class WorkflowExecutor:
     
     def __init__(self, **kwargs: Any) -> None:
         self.config = kwargs
-        self.client = None
         self.logger = get_logger()
     
     async def execute_async(self, flow_func: Callable) -> Any:
         """异步执行工作流。"""
         try:
-            if self.client is None:
-                self.client = get_client()
-            
-            # 使用 Prefect 客户端执行流程
-            flow_run = await self.client.create_flow_run(flow_func)
-            result = await flow_run.result()
-            return result
-        except Exception as e:
-            raise WorkflowError(f"工作流执行失败: {e}")
-    
-    def execute(self, flow_func: Callable) -> Any:
-        """同步执行工作流。"""
-        try:
-            # 直接调用流程函数
+            # 直接调用流程函数（同步执行）
             return flow_func()
         except Exception as e:
             raise WorkflowError(f"工作流执行失败: {e}")
     
-    def execute_with_monitoring(self, flow_func: Callable) -> Dict[str, Any]:
+    def execute(self, flow_func: Callable, parameters: Dict[str, Any] = None) -> Any:
+        """同步执行工作流。"""
+        try:
+            # 直接调用流程函数，传递参数
+            if parameters:
+                return flow_func(parameters)
+            else:
+                return flow_func()
+        except Exception as e:
+            raise WorkflowError(f"工作流执行失败: {e}")
+    
+    def execute_with_monitoring(self, flow_func: Callable, parameters: Dict[str, Any] = None) -> Dict[str, Any]:
         """带监控的工作流执行。"""
         import time
         start_time = time.time()
@@ -59,7 +55,7 @@ class WorkflowExecutor:
         
         try:
             self.logger.info("正在调用工作流函数...")
-            result = self.execute(flow_func)
+            result = self.execute(flow_func, parameters)
             end_time = time.time()
             
             self.logger.info(f"工作流执行成功！")

@@ -1,0 +1,188 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "core" {
+  class LayerType
+  interface BaseDataSource
+  interface BaseDataProcessor
+  interface BaseDataAnalyzer
+  interface BaseResultMerger
+  interface BaseResultBroker
+  interface LayeredTask
+
+  class DataSourceFactory
+  class DataProcessingFactory
+  class DataAnalysisFactory
+  class ResultMergingFactory
+  class ResultBrokerFactory
+  class WorkflowFactory
+
+  class OPLibError
+  class ConfigurationError
+  class DataProcessingError
+  class AnalysisError
+  class WorkflowError
+
+  OPLibError <|-- ConfigurationError
+  OPLibError <|-- DataProcessingError
+  OPLibError <|-- AnalysisError
+  OPLibError <|-- WorkflowError
+}
+
+package "data.sources" {
+  class CSVDataSource
+  class APIDataSource
+  class DatabaseDataSource
+  class KafkaDataSource
+
+  BaseDataSource <|.. CSVDataSource
+  BaseDataSource <|.. APIDataSource
+  BaseDataSource <|.. DatabaseDataSource
+  BaseDataSource <|.. KafkaDataSource
+}
+
+package "data.processors" {
+  class SensorGroupProcessor
+  class StageDetectorProcessor
+  class DataPreprocessor
+  class DataCleaner
+
+  BaseDataProcessor <|.. SensorGroupProcessor
+  BaseDataProcessor <|.. StageDetectorProcessor
+  BaseDataProcessor <|.. DataPreprocessor
+  BaseDataProcessor <|.. DataCleaner
+}
+
+package "analysis.analyzers" {
+  class RuleEngineAnalyzer
+  class SPCAnalyzer
+  class FeatureExtractor
+  class CNNPredictor
+  class AnomalyDetector
+
+  BaseDataAnalyzer <|.. RuleEngineAnalyzer
+  BaseDataAnalyzer <|.. SPCAnalyzer
+  BaseDataAnalyzer <|.. FeatureExtractor
+  BaseDataAnalyzer <|.. CNNPredictor
+  BaseDataAnalyzer <|.. AnomalyDetector
+}
+
+package "analysis.mergers" {
+  class ResultAggregator
+  class ResultValidator
+  class ResultFormatter
+
+  BaseResultMerger <|.. ResultAggregator
+  BaseResultMerger <|.. ResultValidator
+  BaseResultMerger <|.. ResultFormatter
+}
+
+package "broker" {
+  class FileWriter
+  class WebhookWriter
+  class KafkaWriter
+  class DatabaseWriter
+
+  BaseResultBroker <|.. FileWriter
+  BaseResultBroker <|.. WebhookWriter
+  BaseResultBroker <|.. KafkaWriter
+  BaseResultBroker <|.. DatabaseWriter
+}
+
+package "config" {
+  class ConfigLoader
+  class ConfigManager
+}
+
+package "workflow" {
+  class WorkflowBuilder
+  class WorkflowExecutor
+  class WorkflowCache
+}
+
+package "utils" {
+  class LoggingConfig <<utility>>
+  class PathUtils <<utility>>
+}
+
+' 工厂到实现（注册/创建）关系
+DataSourceFactory ..> CSVDataSource : register/create
+DataSourceFactory ..> APIDataSource : register/create
+DataSourceFactory ..> DatabaseDataSource : register/create
+DataSourceFactory ..> KafkaDataSource : register/create
+
+DataProcessingFactory ..> SensorGroupProcessor : register/create
+DataProcessingFactory ..> StageDetectorProcessor : register/create
+DataProcessingFactory ..> DataPreprocessor : register/create
+DataProcessingFactory ..> DataCleaner : register/create
+
+DataAnalysisFactory ..> RuleEngineAnalyzer : register/create
+DataAnalysisFactory ..> SPCAnalyzer : register/create
+DataAnalysisFactory ..> FeatureExtractor : register/create
+DataAnalysisFactory ..> CNNPredictor : register/create
+DataAnalysisFactory ..> AnomalyDetector : register/create
+
+ResultMergingFactory ..> ResultAggregator : register/create
+ResultMergingFactory ..> ResultValidator : register/create
+ResultMergingFactory ..> ResultFormatter : register/create
+
+ResultBrokerFactory ..> FileWriter : register/create
+ResultBrokerFactory ..> WebhookWriter : register/create
+ResultBrokerFactory ..> KafkaWriter : register/create
+ResultBrokerFactory ..> DatabaseWriter : register/create
+
+' WorkflowFactory 根据层类型分发
+WorkflowFactory ..> DataSourceFactory
+WorkflowFactory ..> DataProcessingFactory
+WorkflowFactory ..> DataAnalysisFactory
+WorkflowFactory ..> ResultMergingFactory
+WorkflowFactory ..> ResultBrokerFactory
+
+' WorkflowBuilder 使用
+WorkflowBuilder ..> ConfigManager
+WorkflowBuilder ..> DataSourceFactory
+WorkflowBuilder ..> DataProcessingFactory
+WorkflowBuilder ..> DataAnalysisFactory
+WorkflowBuilder ..> ResultMergingFactory
+WorkflowBuilder ..> ResultBrokerFactory
+WorkflowBuilder ..> LayerType
+WorkflowBuilder ..> WorkflowError
+WorkflowBuilder ..> LoggingConfig : get_logger
+
+' 执行与缓存
+WorkflowExecutor ..> WorkflowError
+WorkflowExecutor ..> LoggingConfig : get_logger
+WorkflowCache ..> "LRU(OrderedDict)" : uses
+
+' 结果输出依赖工具
+FileWriter ..> PathUtils : resolve_path
+WebhookWriter ..> WorkflowError
+KafkaWriter ..> WorkflowError
+DatabaseWriter ..> WorkflowError
+
+' 配置加载/解析依赖
+ConfigManager ..> ConfigLoader
+ConfigManager ..> ConfigurationError
+ConfigManager ..> LoggingConfig : get_logger
+ConfigLoader ..> ConfigurationError
+
+' 数据源/处理器/分析器对异常依赖
+CSVDataSource ..> WorkflowError
+CSVDataSource ..> PathUtils : resolve_path
+APIDataSource ..> WorkflowError
+DatabaseDataSource ..> WorkflowError
+KafkaDataSource ..> WorkflowError
+
+SensorGroupProcessor ..> WorkflowError
+StageDetectorProcessor ..> WorkflowError
+DataPreprocessor ..> WorkflowError
+DataCleaner ..> WorkflowError
+
+RuleEngineAnalyzer ..> WorkflowError
+SPCAnalyzer ..> WorkflowError
+FeatureExtractor ..> WorkflowError
+CNNPredictor ..> WorkflowError
+AnomalyDetector ..> WorkflowError
+
+@enduml
