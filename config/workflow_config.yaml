@@ -9,7 +9,6 @@ workflows:
   curing_analysis:
     name: "热压罐固化分析工作流"
     description: "基于传感器数据的固化过程分析工作流"
-    process_id: "CURING_001"
     
     # 工作流参数
     parameters:
@@ -29,26 +28,11 @@ workflows:
         type: "boolean"
         default: false
         description: "是否通大气"
-      thermocouples:
-        type: "array"
-        default: ["PTC10", "PTC11", "PTC23", "PTC24"]
-        description: "参与计算的热电偶"
-      vacuum_lines:
-        type: "array"
-        default: ["VPRB1"]
-        description: "参与计算的真空管路"
-      leading_thermocouples:
-        type: "array"
-        default: ["PTC10", "PTC11"]
-        description: "领先偶"
-      lagging_thermocouples:
-        type: "array"
-        default: ["PTC23", "PTC24"]
-        description: "滞后偶"
-      pressure_sensors:
-        type: "array"
-        default: ["PRESS"]
-        description: "压力传感器"
+      # 传感器组参数 - 从 sensor_groups.yaml 配置中动态加载
+      sensor_groups:
+        type: "reference"
+        source: "sensor_groups_config"
+        description: "传感器组配置引用"
       calculation_date:
         type: "string"
         required: true
@@ -61,8 +45,24 @@ workflows:
         path: "{input_file}"
         format: "sensor_data"
         timestamp_column: "timestamp"
+      
+      # 数据库数据源示例（注释掉，需要时启用）
+      # database_source:
+      #   type: "database"
+      #   connection_string: "postgresql://user:pass@localhost/db"
+      #   query: "SELECT * FROM sensor_data WHERE series_id = {series_id}"
+      #   timeout: 30
+      
+      # Kafka数据源示例（注释掉，需要时启用）
+      # kafka_source:
+      #   type: "kafka"
+      #   topic: "sensor_data"
+      #   brokers: ["localhost:9092"]
+      #   group_id: "oplib_consumer"
+      #   timeout: 1000
+      #   max_records: 1000
 
-    # 任务流程配置
+    # 分层架构任务流程配置
     workflow:
       # 数据源获取层
       - layer: "data_source"
@@ -72,45 +72,81 @@ workflows:
             source: "primary"
             depends_on: []
 
-      # 数据处理层
+      # 数据层：数据清洗和预处理
+      - layer: "data_processing"
+        tasks:
+          - id: "data_cleaning"
+            implementation: "data_cleaner"
+            algorithm: "basic_cleaner"
+            parameters:
+              remove_duplicates: true
+              fill_missing: true
+            depends_on: ["load_primary_data"]
+
+      # 传感器组合层：传感器分组
       - layer: "data_processing"
         tasks:
           - id: "sensor_grouping"
             implementation: "sensor_grouper"
-            algorithm: "hierarchical_clustering"
+            algorithm: "thermocouple_grouping"
             parameters:
-              calculation_config: "config/calculation_definitions.yaml"
-            depends_on: ["load_primary_data"]
-            
+              # 传感器组配置从 sensor_groups.yaml 动态加载
+              sensor_groups_config: "config/sensor_groups.yaml"
+            depends_on: ["data_cleaning"]
+
+      # 阶段识别层：纯数据驱动的阶段检测
+      - layer: "data_processing"
+        tasks:
           - id: "stage_detection"
             implementation: "stage_detector"
-            algorithm: "rule_based"
+            algorithm: "temperature_based_detection"
             parameters:
-              stage_config: "config/process_stages.yaml"
-            depends_on: ["load_primary_data", "sensor_grouping"]
+              temperature_threshold: 50.0
+              min_stage_duration: 10
+            depends_on: ["sensor_grouping"]
 
-      # 数据分析层
+      # 规格绑定层：将阶段、传感器组与规则绑定
+      - layer: "spec_binding"
+        tasks:
+          - id: "spec_binding"
+            implementation: "spec_binding_processor"
+            algorithm: "rule_planner"
+            parameters:
+              spec_config: "config/process_specification.yaml"
+              rule_config: "config/process_rules.yaml"
+            depends_on: ["stage_detection"]
+
+      # 规则执行层：执行绑定的规则计划
       - layer: "data_analysis"
         tasks:
-          - id: "rule_compliance"
-            implementation: "rule_engine"
-            algorithm: "compliance_checker"
+          - id: "rule_execution"
+            implementation: "rule_engine_analyzer"
+            algorithm: "rule_engine"
             parameters:
-              rule_config: "config/process_rules.yaml"
-              spec_config: "config/process_specification.yaml"
               calculation_config: "config/calculation_definitions.yaml"
-            depends_on: ["stage_detection", "sensor_grouping"]
+            depends_on: ["spec_binding"]
+
+      # 质量分析层：可选的质量分析
+      - layer: "data_analysis"
+        tasks:
+          - id: "quality_analysis"
+            implementation: "spc_analyzer"
+            algorithm: "statistical_process_control"
+            parameters:
+              control_limits: true
+              trend_analysis: true
+            depends_on: ["rule_execution"]
 
       # 结果合并层
       - layer: "result_merging"
         tasks:
           - id: "result_aggregation"
             implementation: "result_aggregator"
-            algorithm: "weighted_average"
+            algorithm: "comprehensive_aggregator"
             parameters:
-              weights:
-                rule_compliance: 1.0
-            depends_on: ["rule_compliance"]
+              include_metadata: true
+              include_timeline: true
+            depends_on: ["rule_execution", "quality_analysis"]
             
           - id: "result_validation"
             implementation: "result_validator"
@@ -125,7 +161,7 @@ workflows:
             parameters:
               output_format: "json"
               include_metadata: true
-            depends_on: ["result_aggregation"]
+            depends_on: ["result_validation"]
 
       # 结果输出层
       - layer: "result_output"
@@ -137,6 +173,9 @@ workflows:
               path: "reports/{series_id}_{execution_time}_report.json"
               format: "json"
             depends_on: ["result_formatting"]
+
+    # 传感器组配置引用 - 从独立配置文件加载
+    sensor_groups_config: "config/sensor_groups.yaml"
 
     # 结果输出配置
     result_outputs:

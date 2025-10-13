@@ -1,8 +1,8 @@
 """结果聚合器。"""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 from ...core.interfaces import BaseResultMerger
-from ...core.types import DataAnalysisOutput, ResultAggregationOutput
+from ...core.types import DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -15,7 +15,7 @@ class ResultAggregator(BaseResultMerger):
         self.algorithm = algorithm
         self.weights = weights or {}
     
-    def merge(self, results: List[DataAnalysisOutput], **kwargs: Any) -> ResultAggregationOutput:
+    def merge(self, results: List[Union[DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput]], **kwargs: Any) -> ResultAggregationOutput:
         """合并结果。"""
         from src.utils.logging_config import get_logger
         logger = get_logger()

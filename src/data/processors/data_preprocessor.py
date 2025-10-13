@@ -3,7 +3,7 @@
 import numpy as np
 from typing import Any, Dict, List, Union
 from ...core.interfaces import BaseDataProcessor
-from ...core.types import DataSourceOutput, SensorGroupingOutput, StageDetectionOutput
+from ...core.types import WorkflowDataContext, ProcessorResult
 from ...core.exceptions import WorkflowError
 
 
@@ -17,7 +17,7 @@ class DataPreprocessor(BaseDataProcessor):
         self.method = method
         self.threshold = threshold
     
-    def process(self, data: DataSourceOutput, **kwargs: Any) -> Union[SensorGroupingOutput, StageDetectionOutput]:
+    def process(self, data_context: WorkflowDataContext, **kwargs: Any) -> ProcessorResult:
         """处理数据预处理。"""
         # TODO: 实现实际的数据预处理逻辑
         raise WorkflowError("数据预处理器尚未实现")

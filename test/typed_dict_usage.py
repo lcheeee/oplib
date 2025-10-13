@@ -48,14 +48,22 @@ def create_sample_sensor_data() -> DataSourceOutput:
 
 def create_sample_grouping_result() -> SensorGroupingOutput:
     """创建示例传感器分组结果。"""
+    # 从配置中获取传感器组信息
+    from config.manager import ConfigManager
+    config_manager = ConfigManager()
+    sensor_groups_config = config_manager.get_config("sensor_groups")
+    sensor_groups = sensor_groups_config.get("sensor_groups", {})
+    
+    # 构建分组映射
+    group_mappings = {}
+    for group_name, group_config in sensor_groups.items():
+        columns = [col.strip() for col in group_config.get("columns", "").split(",") if col.strip()]
+        group_mappings[group_name] = columns
+    
     grouping_info: GroupingInfo = {
-        "total_groups": 3,
-        "group_names": ["thermocouples", "pressure_sensors", "vacuum_sensors"],
-        "group_mappings": {
-            "thermocouples": ["PTC10", "PTC11", "PTC23", "PTC24"],
-            "pressure_sensors": ["PRESS"],
-            "vacuum_sensors": ["VPRB1"]
-        },
+        "total_groups": len(group_mappings),
+        "group_names": list(group_mappings.keys()),
+        "group_mappings": group_mappings,
         "algorithm_used": "hierarchical_clustering"
     }
     

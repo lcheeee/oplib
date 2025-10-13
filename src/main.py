@@ -90,7 +90,6 @@ def load_workflow_registry(startup_config_path: str = "config/startup_config.yam
                 workflow_registry[workflow_name] = {
                     "config_file": config_manager.get_config_path("workflow_config"),
                     "version": workflow_config.get("version", "v1"),
-                    "process_id": workflow_def.get("process_id", ""),
                     "description": workflow_def.get("description", f"工作流: {workflow_name}"),
                     "config": workflow_def
                 }
@@ -243,12 +242,29 @@ async def run_workflow(request: WorkflowRequest):
         
         # 验证输入文件
         if request.inputs and request.inputs.data_source:
-            logger.info(f"验证输入文件: {request.inputs.data_source}")
-            if not Path(request.inputs.data_source).exists():
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"输入文件不存在: {request.inputs.data_source}"
-                )
+            # 规范化路径分隔符，避免控制台显示问题
+            normalized_path = request.inputs.data_source.replace('\\', '/')
+            logger.info(f"验证输入文件: {normalized_path}")
+            
+            # 使用路径解析工具来正确处理相对路径
+            from src.utils.path_utils import resolve_path
+            if config_manager:
+                base_dir = config_manager.get_startup_params().get('base_dir', '.')
+                resolved_path = resolve_path(base_dir, normalized_path)
+                logger.info(f"解析后的文件路径: {resolved_path}")
+                
+                if not Path(resolved_path).exists():
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"输入文件不存在: {resolved_path}"
+                    )
+            else:
+                # 回退到直接检查
+                if not Path(normalized_path).exists():
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"输入文件不存在: {normalized_path}"
+                    )
             logger.info("输入文件验证通过")
         
         # 构建工作流（使用缓存）

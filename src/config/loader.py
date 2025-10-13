@@ -58,3 +58,7 @@ class ConfigLoader:
     def load_calculation_definitions_config(self, config_file: str) -> Dict[str, Any]:
         """加载计算定义配置。"""
         return load_yaml(resolve_path(self.base_dir, config_file))
+    
+    def load_sensor_groups_config(self, config_file: str) -> Dict[str, Any]:
+        """加载传感器组配置。"""
+        return load_yaml(resolve_path(self.base_dir, config_file))

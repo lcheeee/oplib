@@ -9,11 +9,19 @@ from ...core.exceptions import WorkflowError
 class DatabaseDataSource(BaseDataSource):
     """数据库数据源。"""
     
-    def __init__(self, connection_string: str, query: str, **kwargs: Any) -> None:
+    def __init__(self, connection_string: str, query: str, 
+                 config_manager = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.connection_string = connection_string
         self.query = query
-        self.timeout = kwargs.get("timeout", 30)
+        self.config_manager = config_manager
+        
+        # 获取超时设置
+        if self.config_manager:
+            self.timeout = kwargs.get("timeout", self.config_manager.get_timeout("database"))
+        else:
+            self.timeout = kwargs.get("timeout", 30)
+        
         self.algorithm = "database_query"  # 设置算法名称
     
     def read(self, **kwargs: Any) -> DataSourceOutput:

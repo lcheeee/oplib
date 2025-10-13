@@ -9,7 +9,52 @@ from .exceptions import WorkflowError
 from .base_logger import BaseLogger
 
 
-class DataSourceFactory(BaseLogger):
+class BaseFactory(BaseLogger):
+    """通用工厂基类：抽取注册、创建、日志与错误包装。
+
+    子类必须实现：
+    - _get_registry: 返回子类私有注册表（字典），避免跨子类共享
+    - _extract_key: 从配置提取用于查找注册表的键与显示名
+    可选实现：
+    - _preprocess_params: 在实例化前对参数做预处理（如扁平化）
+    """
+
+    @classmethod
+    def _get_registry(cls) -> Dict[str, Type[Any]]:
+        raise NotImplementedError
+
+    @classmethod
+    def register_component(cls, name: str, component_class: Type[Any]) -> None:
+        registry = cls._get_registry()
+        registry[name] = component_class
+
+    @classmethod
+    def _extract_key(cls, config: Dict[str, Any]) -> tuple[str, str]:
+        raise NotImplementedError
+
+    @classmethod
+    def _preprocess_params(cls, params: Dict[str, Any]) -> Dict[str, Any]:
+        return params
+
+    @classmethod
+    def create(cls, config: Dict[str, Any]) -> Any:
+        registry = cls._get_registry()
+        display_name, key = cls._extract_key(config)
+
+        # 统一日志输出
+        temp_instance = cls()
+        temp_instance._log_component_info(display_name, key, config)
+
+        if key not in registry:
+            raise WorkflowError(f"不支持的{display_name}: {key}")
+
+        params = cls._preprocess_params(config.copy())
+        component_class = registry[key]
+        instance = component_class(**params)
+        return instance
+
+
+class DataSourceFactory(BaseFactory):
     """数据源工厂类。"""
     
     _sources: Dict[str, Type[BaseDataSource]] = {}
@@ -17,29 +62,29 @@ class DataSourceFactory(BaseLogger):
     @classmethod
     def register_source(cls, source_type: str, source_class: Type[BaseDataSource]) -> None:
         """注册数据源类型。"""
-        cls._sources[source_type] = source_class
+        cls.register_component(source_type, source_class)
     
     @classmethod
     def create_source(cls, source_config: Dict[str, Any]) -> BaseDataSource:
         """创建数据源实例。"""
-        source_type = source_config.get("type", "csv")
-        
-        if source_type not in cls._sources:
-            raise WorkflowError(f"不支持的数据源类型: {source_type}")
-        
-        # 创建临时实例用于日志输出
+        # 复用基类创建逻辑
+        instance = cls.create(source_config)
+        # 附加数据源特有日志
         temp_instance = cls()
-        temp_instance._log_component_info("数据源", source_type, source_config)
-        
-        source_class = cls._sources[source_type]
-        instance = source_class(**source_config)
-        
         if temp_instance.logger:
             temp_instance.logger.info(f"  数据源路径: {source_config.get('path', 'N/A')}")
             temp_instance.logger.info(f"  实例类型: {type(instance).__name__}")
-            temp_instance.logger.info(f"  实例算法: {instance.get_algorithm()}")
-        
+            temp_instance.logger.info(f"  实例算法: {getattr(instance, 'get_algorithm', lambda: 'unknown')()}")
         return instance
+
+    @classmethod
+    def _get_registry(cls) -> Dict[str, Type[Any]]:
+        return cls._sources
+
+    @classmethod
+    def _extract_key(cls, config: Dict[str, Any]) -> tuple[str, str]:
+        # 数据源以 type 字段作为实现键
+        return ("数据源", config.get("type", "csv"))
     
     @classmethod
     def get_supported_types(cls) -> List[str]:
@@ -160,7 +205,7 @@ class ResultMergingFactory(BaseLogger):
         return list(cls._mergers.keys())
 
 
-class ResultBrokerFactory(BaseLogger):
+class ResultBrokerFactory(BaseFactory):
     """结果代理工厂类。"""
     
     _brokers: Dict[str, Type[BaseResultBroker]] = {}
@@ -168,40 +213,39 @@ class ResultBrokerFactory(BaseLogger):
     @classmethod
     def register_broker(cls, broker_type: str, broker_class: Type[BaseResultBroker]) -> None:
         """注册代理器类型。"""
-        cls._brokers[broker_type] = broker_class
+        cls.register_component(broker_type, broker_class)
     
     @classmethod
     def create_broker(cls, broker_config: Dict[str, Any]) -> BaseResultBroker:
         """创建代理器实例。"""
-        implementation = broker_config.get("implementation")
-        
-        if not implementation or implementation not in cls._brokers:
-            raise WorkflowError(f"不支持的结果代理器: {implementation}")
-        
-        # 创建临时实例用于日志输出
+        instance = cls.create(broker_config)
         temp_instance = cls()
-        temp_instance._log_component_info("输出器", implementation, broker_config)
-        
-        broker_class = cls._brokers[implementation]
-        
-        # 提取参数，支持嵌套的parameters结构
-        broker_params = broker_config.copy()
-        if "parameters" in broker_params:
-            # 将parameters中的参数提升到顶层
-            parameters = broker_params.pop("parameters")
-            broker_params.update(parameters)
-        
-        instance = broker_class(**broker_params)
-        
         if temp_instance.logger:
-            temp_instance.logger.info(f"  输出器算法: {instance.get_broker_type()}")
-        
+            temp_instance.logger.info(f"  输出器算法: {getattr(instance, 'get_broker_type', lambda: 'unknown')()}")
         return instance
     
     @classmethod
     def get_supported_types(cls) -> List[str]:
         """获取支持的代理器类型。"""
         return list(cls._brokers.keys())
+
+    @classmethod
+    def _get_registry(cls) -> Dict[str, Type[Any]]:
+        return cls._brokers
+
+    @classmethod
+    def _extract_key(cls, config: Dict[str, Any]) -> tuple[str, str]:
+        # 输出层以 implementation 字段作为实现键
+        return ("输出器", config.get("implementation"))
+
+    @classmethod
+    def _preprocess_params(cls, params: Dict[str, Any]) -> Dict[str, Any]:
+        # 扁平化 parameters 字段，保持现有行为
+        if "parameters" in params:
+            p = params.pop("parameters")
+            if isinstance(p, dict):
+                params.update(p)
+        return params
 
 
 class WorkflowFactory:

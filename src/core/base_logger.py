@@ -42,6 +42,33 @@ class BaseLogger(ABC):
                 self.logger.info(f"  {component_type}配置: {config}")
             if algorithm:
                 self.logger.info(f"  {component_type}算法: {algorithm}")
+    
+    def _create_unimplemented_result(self, component_name: str, result_type: str = "DataAnalysisOutput") -> dict:
+        """创建统一的未实现结果。
+        
+        Args:
+            component_name: 组件名称
+            result_type: 结果类型
+            
+        Returns:
+            包含未实现信息的标准结果字典
+        """
+        return {
+            "status": "unimplemented",
+            "message": f"{component_name}尚未实现",
+            "component": component_name,
+            "result_type": result_type,
+            "analysis_info": {
+                "algorithm": getattr(self, 'algorithm', 'unknown'),
+                "implementation_status": "not_implemented",
+                "note": "此组件功能尚未实现，返回占位结果以保持工作流连续性"
+            },
+            "input_metadata": {},
+            "output_metadata": {
+                "placeholder": True,
+                "created_at": "workflow_execution"
+            }
+        }
 
 
 def handle_workflow_errors(operation_name: str):
@@ -52,7 +79,8 @@ def handle_workflow_errors(operation_name: str):
             try:
                 return func(*args, **kwargs)
             except Exception as e:
-                raise WorkflowError(f"{operation_name}失败: {e}")
+                # 保留原始异常链
+                raise WorkflowError(f"{operation_name}失败: {e}") from e
         return wrapper
     return decorator
 

@@ -10,12 +10,19 @@ class APIDataSource(BaseDataSource):
     """API数据源。"""
     
     def __init__(self, url: str, method: str = "GET", headers: Dict[str, str] = None,
-                 **kwargs: Any) -> None:
+                 config_manager = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.url = url
         self.method = method.upper()
         self.headers = headers or {}
-        self.timeout = kwargs.get("timeout", 30)
+        self.config_manager = config_manager
+        
+        # 获取超时设置
+        if self.config_manager:
+            self.timeout = kwargs.get("timeout", self.config_manager.get_timeout("api"))
+        else:
+            self.timeout = kwargs.get("timeout", 30)
+        
         self.params = kwargs.get("params", {})
         self.algorithm = "api_request"  # 设置算法名称
     

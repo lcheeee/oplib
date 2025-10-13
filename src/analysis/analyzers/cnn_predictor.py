@@ -3,7 +3,7 @@
 import numpy as np
 from typing import Any, Dict, Union
 from ...core.interfaces import BaseDataAnalyzer
-from ...core.types import SensorGroupingOutput, StageDetectionOutput, DataAnalysisOutput
+from ...core.types import WorkflowDataContext, DataAnalysisOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -17,10 +17,18 @@ class CNNPredictor(BaseDataAnalyzer):
         self.model_path = model_path
         self.input_shape = input_shape or [100, 10]
     
-    def analyze(self, data: Union[SensorGroupingOutput, StageDetectionOutput], **kwargs: Any) -> DataAnalysisOutput:
+    def analyze(self, data_context: WorkflowDataContext, **kwargs: Any) -> DataAnalysisOutput:
         """执行CNN预测。"""
-        # TODO: 实现实际的CNN预测逻辑
-        raise WorkflowError("CNN预测器尚未实现")
+        # 记录输入信息
+        self.log_input_info(data_context, "CNN预测器")
+        
+        # 创建未实现结果
+        result = self._create_unimplemented_result("CNN预测器", "DataAnalysisOutput")
+        
+        # 记录输出信息
+        self._log_output(result, "CNN预测器", "CNN预测结果 (DataAnalysisOutput)")
+        
+        return result
     
     
 

@@ -27,12 +27,16 @@ class ConfigManager:
         
         # 从配置文件读取启动参数
         startup_params = self.startup_config.get("startup", {})
+        
         self.base_dir = startup_params.get("base_dir", ".")
         self.debug = startup_params.get("debug", True)
         self.host = startup_params.get("host", "0.0.0.0")
         self.port = startup_params.get("port", 8000)
         self.reload = startup_params.get("reload", False)
         self.log_level = startup_params.get("log_level", "info")
+        
+        # 读取系统级超时配置
+        self.timeouts = self.startup_config.get("timeouts", {})
         
         # 初始化配置加载器
         self.config_loader = ConfigLoader(self.base_dir)
@@ -71,6 +75,8 @@ class ConfigManager:
                     self.configs[config_name] = self.config_loader.load_process_stages_config(config_path)
                 elif config_name == "calculation_definitions":
                     self.configs[config_name] = self.config_loader.load_calculation_definitions_config(config_path)
+                elif config_name == "sensor_groups":
+                    self.configs[config_name] = self.config_loader.load_sensor_groups_config(config_path)
                 elif config_name == "process_specification":
                     self.configs[config_name] = self.config_loader.load_workflow_config(config_path)
                 else:
@@ -160,3 +166,16 @@ class ConfigManager:
         self.base_dir = new_base_dir
         self.config_loader = ConfigLoader(self.base_dir)
         self._load_all_configs()
+    
+    def get_timeout(self, service_type: str) -> int:
+        """获取指定服务的超时设置。"""
+        return self.timeouts.get(service_type, 30)
+    
+    def get_kafka_config(self) -> Dict[str, Any]:
+        """获取Kafka配置。"""
+        # Kafka配置现在应该在工作流配置中定义，这里提供默认值
+        return {
+            "brokers": ["localhost:9092"],
+            "timeout": self.get_timeout("kafka"),
+            "max_records": 1000
+        }

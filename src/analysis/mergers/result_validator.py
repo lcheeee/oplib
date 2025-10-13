@@ -1,8 +1,8 @@
 """结果验证器。"""
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 from ...core.interfaces import BaseResultMerger
-from ...core.types import DataAnalysisOutput, ResultValidationOutput
+from ...core.types import DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -10,12 +10,13 @@ class ResultValidator(BaseResultMerger):
     """结果验证器。"""
     
     def __init__(self, algorithm: str = "consistency_check", 
-                 validation_rules: str = None, **kwargs: Any) -> None:
+                 validation_rules: str = None, config_manager = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)  # 调用父类初始化，设置logger
         self.algorithm = algorithm
         self.validation_rules = validation_rules
+        self.config_manager = config_manager
     
-    def merge(self, results: List[DataAnalysisOutput], **kwargs: Any) -> ResultValidationOutput:
+    def merge(self, results: List[Union[DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput]], **kwargs: Any) -> ResultValidationOutput:
         """验证结果。"""
         try:
             if not results:
@@ -100,12 +101,8 @@ class ResultValidator(BaseResultMerger):
             "validation_score": 1.0
         }
         
-        # 定义合理的范围
-        ranges = {
-            "temperature": (-50, 300),  # 温度范围
-            "pressure": (0, 1000),      # 压力范围
-            "quality_score": (0, 1),    # 质量分数范围
-        }
+        # 从配置获取合理的范围
+        ranges = self._get_validation_ranges()
         
         for result in results:
             for key, value in result.items():
@@ -185,5 +182,27 @@ class ResultValidator(BaseResultMerger):
             validation["validation_score"] = 1.0 - len(validation["errors"]) / len(results)
         
         return validation
+    
+    def _get_validation_ranges(self) -> Dict[str, tuple]:
+        """获取验证范围配置。
+        
+        注意：业务逻辑常量不应放在启动配置中，应使用默认值
+        或从专门的业务配置文件中读取。
+        """
+        # 直接使用默认范围，避免从启动配置中读取业务逻辑常量
+        return self._get_default_ranges()
+    
+    def _get_default_ranges(self) -> Dict[str, tuple]:
+        """获取默认验证范围。"""
+        return {
+            "temperature": (-50, 300),
+            "pressure": (0, 1000),
+            "quality_score": (0, 1),
+        }
+    
+    def _get_default_range(self, key: str) -> tuple:
+        """获取指定键的默认范围。"""
+        default_ranges = self._get_default_ranges()
+        return default_ranges.get(key, (0, 100))
     
 

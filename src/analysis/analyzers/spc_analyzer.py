@@ -3,7 +3,7 @@
 import numpy as np
 from typing import Any, Dict, Union
 from ...core.interfaces import BaseDataAnalyzer
-from ...core.types import SensorGroupingOutput, StageDetectionOutput, DataAnalysisOutput
+from ...core.types import WorkflowDataContext, DataAnalysisOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -17,10 +17,18 @@ class SPCAnalyzer(BaseDataAnalyzer):
         self.chart_type = chart_type
         self.control_limits = control_limits
     
-    def analyze(self, data: Union[SensorGroupingOutput, StageDetectionOutput], **kwargs: Any) -> DataAnalysisOutput:
+    def analyze(self, data_context: WorkflowDataContext, **kwargs: Any) -> DataAnalysisOutput:
         """执行SPC分析。"""
-        # TODO: 实现实际的SPC分析逻辑
-        raise WorkflowError("SPC分析器尚未实现")
+        # 记录输入信息
+        self.log_input_info(data_context, "SPC分析器")
+        
+        # 创建未实现结果
+        result = self._create_unimplemented_result("SPC分析器", "DataAnalysisOutput")
+        
+        # 记录输出信息
+        self._log_output(result, "SPC分析器", "SPC分析结果 (DataAnalysisOutput)")
+        
+        return result
     
     
 

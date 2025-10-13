@@ -57,20 +57,47 @@ class BaseDataAnalyzer(BaseLogger):
     """数据分析器基础接口。"""
     
     @abstractmethod
-    def analyze(self, data: Union[SensorGroupingOutput, StageDetectionOutput], **kwargs: Any) -> DataAnalysisOutput:
-        """分析数据。"""
+    def analyze(self, data: Dict[str, Union[DataSourceOutput, SensorGroupingOutput, StageDetectionOutput]], **kwargs: Any) -> DataAnalysisOutput:
+        """分析数据。
+        
+        数据统一格式：
+        - 单数据源: {"source1": DataSourceOutput}
+        - 多数据源: {"source1": DataSourceOutput, "source2": SensorGroupingOutput, ...}
+        
+        所有数据都使用统一的数据结构，分析器只需要处理一种格式。
+        """
         pass
     
     def get_algorithm(self) -> str:
         """获取算法名称。"""
         return getattr(self, 'algorithm', 'unknown')
+    
+    def log_input_info(self, data: Dict[str, Union[DataSourceOutput, SensorGroupingOutput, StageDetectionOutput]], analyzer_name: str = None) -> None:
+        """记录输入信息。
+        
+        Args:
+            data: 输入数据（统一格式）
+            analyzer_name: 分析器名称
+        """
+        if not self.logger:
+            return
+            
+        analyzer_name = analyzer_name or self.__class__.__name__
+        
+        # 记录数据源信息
+        self.logger.info(f"  {analyzer_name} 输入: {list(data.keys())}")
+        
+        for source_name, source_data in data.items():
+            if isinstance(source_data, dict) and "data" in source_data:
+                data_keys = list(source_data["data"].keys())[:3]
+                self.logger.info(f"    {source_name}: {data_keys}...")
 
 
 class BaseResultMerger(BaseLogger):
     """结果合并器基础接口。"""
     
     @abstractmethod
-    def merge(self, results: List[DataAnalysisOutput], **kwargs: Any) -> Union[ResultAggregationOutput, ResultValidationOutput, ResultFormattingOutput]:
+    def merge(self, results: List[Union[DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput]], **kwargs: Any) -> Union[ResultAggregationOutput, ResultValidationOutput, ResultFormattingOutput]:
         """合并结果。"""
         pass
     

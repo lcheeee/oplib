@@ -120,20 +120,37 @@ def test_sensor_grouping():
             calculation_config="config/calculation_definitions.yaml"
         )
         
-        # 创建测试数据
+        # 从配置中获取传感器组信息创建测试数据
+        from config.manager import ConfigManager
+        config_manager = ConfigManager()
+        sensor_groups_config = config_manager.get_config("sensor_groups")
+        sensor_groups = sensor_groups_config.get("sensor_groups", {})
+        
+        # 构建测试数据
+        test_data_dict = {}
+        test_columns = []
+        for group_name, group_config in sensor_groups.items():
+            columns = [col.strip() for col in group_config.get("columns", "").split(",") if col.strip()]
+            for col in columns[:2]:  # 只取前两个传感器作为测试
+                if group_config.get("data_type") == "temperature":
+                    test_data_dict[col] = [25.1, 25.3, 25.5]
+                elif group_config.get("data_type") == "pressure":
+                    test_data_dict[col] = [101.3, 101.2, 101.4]
+                test_columns.append(col)
+                if len(test_columns) >= 3:  # 限制测试数据大小
+                    break
+            if len(test_columns) >= 3:
+                break
+        
         test_data: DataSourceOutput = {
-            "data": {
-                "PTC10": [25.1, 25.3, 25.5],
-                "PTC11": [25.2, 25.4, 25.6],
-                "PRESS": [101.3, 101.2, 101.4]
-            },
+            "data": test_data_dict,
             "metadata": {
                 "source_type": "csv",
                 "format": "sensor_data",
                 "timestamp_column": "timestamp",
                 "row_count": 3,
-                "column_count": 3,
-                "columns": ["PTC10", "PTC11", "PRESS"],
+                "column_count": len(test_columns),
+                "columns": test_columns,
                 "file_path": None,
                 "created_at": None,
                 "updated_at": None

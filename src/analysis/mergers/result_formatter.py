@@ -2,9 +2,9 @@
 
 import json
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Union
 from ...core.interfaces import BaseResultMerger
-from ...core.types import DataAnalysisOutput, ResultFormattingOutput
+from ...core.types import DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput, ResultFormattingOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -18,7 +18,7 @@ class ResultFormatter(BaseResultMerger):
         self.output_format = output_format
         self.include_metadata = include_metadata
     
-    def merge(self, results: List[DataAnalysisOutput], **kwargs: Any) -> ResultFormattingOutput:
+    def merge(self, results: List[Union[DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput]], **kwargs: Any) -> ResultFormattingOutput:
         """格式化结果。"""
         try:
             if not results:

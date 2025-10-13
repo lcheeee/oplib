@@ -22,6 +22,14 @@ calculations:
       description: "获取序列的最小值"
       implementation: "lambda values: min(values) if values else 0"
       
+    sum:
+      description: "获取序列的和"
+      implementation: "lambda values: sum(values) if values else 0"
+      
+    len:
+      description: "获取序列的长度"
+      implementation: "lambda values: len(values) if values else 0"
+      
     avg:
       description: "获取序列的平均值"
       implementation: "lambda values: sum(values) / len(values) if values else 0"
@@ -130,12 +138,4 @@ calculations:
       unit: "°C"
 
 # 计算上下文定义
-context_mappings:
-  # 将传感器组映射到计算上下文
-  sensor_group_mappings:
-    thermocouples: "PTC10,PTC11,PTC23,PTC24"  # 多列平均值
-    leading_thermocouples: "PTC10,PTC11"
-    lagging_thermocouples: "PTC23,PTC24"
-    pressure_sensors: "PRESS"
-    vacuum_sensors: "VPRB1"
-    timestamps: "timestamp"
+# 注意：传感器组配置已移至 config/sensor_groups.yaml

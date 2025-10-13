@@ -28,30 +28,31 @@ classDiagram
         <<interface>>
         +read() DataSourceOutput
         +validate() bool
+        +get_algorithm() str {default implementation}
     }
     
     class BaseDataProcessor {
         <<interface>>
         +process(data) Union[SensorGroupingOutput, StageDetectionOutput]
-        +get_algorithm() str
+        +get_algorithm() str {default implementation}
     }
     
     class BaseDataAnalyzer {
         <<interface>>
         +analyze(data) DataAnalysisOutput
-        +get_algorithm() str
+        +get_algorithm() str {default implementation}
     }
     
     class BaseResultMerger {
         <<interface>>
         +merge(results) Union[ResultAggregationOutput, ResultValidationOutput, ResultFormattingOutput]
-        +get_algorithm() str
+        +get_algorithm() str {default implementation}
     }
     
     class BaseResultBroker {
         <<interface>>
         +broker(result) str
-        +get_broker_type() str
+        +get_broker_type() str {default implementation}
     }
 
     %% 数据源层 (Layer 1)
@@ -59,35 +60,39 @@ classDiagram
         -path: str
         -format: str
         -timestamp_column: str
+        -algorithm: str
         +read() DataSourceOutput
         +validate() bool
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
     
     class KafkaDataSource {
         -topic: str
         -brokers: list
         -group_id: str
+        -algorithm: str
         +read() DataSourceOutput
         +validate() bool
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
     
     class DatabaseDataSource {
         -connection_string: str
         -query: str
+        -algorithm: str
         +read() DataSourceOutput
         +validate() bool
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
     
     class APIDataSource {
         -url: str
         -method: str
         -headers: Dict[str, str]
+        -algorithm: str
         +read() DataSourceOutput
         +validate() bool
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
 
     %% 数据处理层 (Layer 2)
@@ -97,7 +102,7 @@ classDiagram
         -process_id: str
         +process(data) SensorGroupingOutput
         +_perform_grouping() GroupingInfo
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
     
     class StageDetectorProcessor {
@@ -106,7 +111,7 @@ classDiagram
         -process_id: str
         +process(data) StageDetectionOutput
         +_detect_stages() StageInfo
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
     
     class DataPreprocessor {
@@ -114,7 +119,7 @@ classDiagram
         -method: str
         -threshold: float
         +process(data) Union[SensorGroupingOutput, StageDetectionOutput]
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
     
     class DataCleaner {
@@ -123,7 +128,7 @@ classDiagram
         +process(data) Union[SensorGroupingOutput, StageDetectionOutput]
         +_clean_data() Dict[str, Any]
         +_linear_interpolation() np.ndarray
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
 
     %% 数据分析层 (Layer 3)
@@ -135,7 +140,7 @@ classDiagram
         +analyze(data) DataAnalysisOutput
         +_check_rules() Dict[str, RuleResult]
         +_evaluate_rule() Dict[str, Any]
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
     
     class SPCAnalyzer {
@@ -143,14 +148,14 @@ classDiagram
         -chart_type: str
         -control_limits: str
         +analyze(data) DataAnalysisOutput
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
     
     class FeatureExtractor {
         -algorithm: str
         -features: List[str]
         +analyze(data) DataAnalysisOutput
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
     
     class CNNPredictor {
@@ -158,7 +163,7 @@ classDiagram
         -model_path: str
         -input_shape: list
         +analyze(data) DataAnalysisOutput
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
     
     class AnomalyDetector {
@@ -168,7 +173,7 @@ classDiagram
         +_detect_anomalies() Dict[str, Any]
         +_isolation_forest_detection() Dict[str, Any]
         +_statistical_anomaly_detection() Dict[str, Any]
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
 
     %% 结果合并层 (Layer 4)
@@ -180,7 +185,7 @@ classDiagram
         +_majority_vote_merge() Dict[str, Any]
         +_consensus_merge() Dict[str, Any]
         +_simple_merge() Dict[str, Any]
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
     
     class ResultValidator {
@@ -191,7 +196,7 @@ classDiagram
         +_range_validation() ValidationResult
         +_type_validation() ValidationResult
         +_basic_validation() ValidationResult
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
     
     class ResultFormatter {
@@ -203,7 +208,7 @@ classDiagram
         +_summary_format() Dict[str, Any]
         +_detailed_format() Dict[str, Any]
         +_basic_format() Dict[str, Any]
-        +get_algorithm() str
+        +get_algorithm() str {inherited}
     }
 
     %% 结果输出层 (Layer 5)
@@ -216,7 +221,7 @@ classDiagram
         +_write_json() void
         +_write_yaml() void
         +_write_text() void
-        +get_broker_type() str
+        +get_broker_type() str {inherited}
     }
     
     class WebhookWriter {
@@ -225,7 +230,7 @@ classDiagram
         -method: str
         -headers: Dict[str, str]
         +broker(result) str
-        +get_broker_type() str
+        +get_broker_type() str {inherited}
     }
     
     class KafkaWriter {
@@ -233,7 +238,7 @@ classDiagram
         -topic: str
         -brokers: list
         +broker(result) str
-        +get_broker_type() str
+        +get_broker_type() str {inherited}
     }
     
     class DatabaseWriter {
@@ -241,7 +246,7 @@ classDiagram
         -connection_string: str
         -table: str
         +broker(result) str
-        +get_broker_type() str
+        +get_broker_type() str {inherited}
     }
 
     %% 工作流管理
@@ -378,7 +383,7 @@ flowchart TD
     D2_1 -.-> E3
     E3 -.-> E3_1[FeatureExtractor]
     
-    %% Layer 4: 结果合并
+    %% Layer 4: 结果合并 (串行处理)
     E1_1 --> F1[result_aggregation]
     F1 --> F1_1[ResultAggregator]
     F1_1 --> F2[result_validation]
@@ -411,13 +416,19 @@ flowchart TD
 |------|--------|----------|----------|------|
 | **数据源层** | load_primary_data | `Dict[str, Any]` | `DataSourceOutput` | 外部文件路径参数 |
 | **数据处理层** | sensor_grouping | `DataSourceOutput` | `SensorGroupingOutput` | 传感器分组处理 |
-| | stage_detection | `DataSourceOutput` | `StageDetectionOutput` | 阶段检测处理 |
-| **数据分析层** | rule_compliance | `Union[SensorGroupingOutput, StageDetectionOutput]` | `DataAnalysisOutput` | 规则合规检查 |
+| | stage_detection | `DataSourceOutput` | `StageDetectionOutput` | 阶段检测处理 (实际只使用第一个依赖) |
+| **数据分析层** | rule_compliance | `StageDetectionOutput` | `DataAnalysisOutput` | 规则合规检查 (实际只使用第一个依赖) |
 | | (可扩展) | `Union[SensorGroupingOutput, StageDetectionOutput]` | `DataAnalysisOutput` | SPC分析、特征提取等 |
 | **结果合并层** | result_aggregation | `List[DataAnalysisOutput]` | `ResultAggregationOutput` | 结果聚合 |
-| | result_validation | `List[DataAnalysisOutput]` | `ResultValidationOutput` | 结果验证 |
-| | result_formatting | `List[DataAnalysisOutput]` | `ResultFormattingOutput` | 结果格式化 |
+| | result_validation | `List[ResultAggregationOutput]` | `ResultValidationOutput` | 结果验证 |
+| | result_formatting | `List[ResultValidationOutput]` | `ResultFormattingOutput` | 结果格式化 |
 | **结果输出层** | save_local_report | `ResultFormattingOutput` | `str` | 文件路径字符串 |
+
+### ⚠️ 当前实现限制
+- **多依赖处理**: 当前工作流构建器只使用 `depends_on` 列表中的第一个依赖
+- **stage_detection**: 虽然配置了 `["load_primary_data", "sensor_grouping"]`，但实际只使用 `load_primary_data`
+- **rule_compliance**: 虽然配置了 `["stage_detection", "sensor_grouping"]`，但实际只使用 `stage_detection`
+- **建议**: 如需使用多依赖，需要修改工作流构建器的依赖处理逻辑
 
 ## TypedDict类型定义
 
@@ -468,10 +479,12 @@ OutputResult = Union[str, DataSourceOutput, SensorGroupingOutput,
                     ResultFormattingOutput]
 ```
 
-## 并行执行说明
-- **当前实现**: 串行执行，通过拓扑排序确定顺序
-- **架构支持**: data_analysis层支持多个并行task，共享相同输入
-- **扩展性**: 可以轻松添加更多分析器，它们可以并行处理相同的数据
+## 执行模式说明
+- **数据源层**: 串行执行，单一数据源
+- **数据处理层**: 并行执行，多个处理器可同时处理数据源输出
+- **数据分析层**: 并行执行，多个分析器可同时处理处理器输出
+- **结果合并层**: 串行执行，严格的依赖关系确保正确的数据流
+- **结果输出层**: 串行执行，基于格式化结果生成最终输出
 
 
 ### ✅ 已完成TypedDict更新
@@ -501,7 +514,8 @@ OutputResult = Union[str, DataSourceOutput, SensorGroupingOutput,
     ↓
 数据分析层: DataAnalysisOutput
     ↓
-结果合并层: Union[ResultAggregationOutput, ResultValidationOutput, ResultFormattingOutput]
+结果合并层 (串行处理):
+    DataAnalysisOutput → ResultAggregationOutput → ResultValidationOutput → ResultFormattingOutput
     ↓
 结果输出层: ResultFormattingOutput
     ↓
@@ -524,6 +538,8 @@ OutputResult = Union[str, DataSourceOutput, SensorGroupingOutput,
 - ✅ 完全移除Dict[str, Any]兼容性
 - ✅ 实现完全类型安全的工作流系统
 - ✅ 消除重复代码：基类提供默认的get_algorithm()实现
+- ✅ 修复数据流：结果合并层正确的串行依赖关系
+- ✅ 更新接口类型：支持多种输入类型的合并器接口
 
 ### 🚀 主要优势
 - **类型安全**: 编译时类型检查，减少运行时错误
@@ -553,8 +569,17 @@ def get_algorithm(self) -> str:
 - `IoTDataSource`: 保留特殊的 `get_algorithm()` 实现，因为它依赖于 `get_source_type()` 方法
 - 其他实现类: 使用基类默认实现，通过 `self.algorithm` 属性获取算法名称
 
+#### 数据流修复
+- **问题**: 结果合并层的三个任务都依赖 `DataAnalysisOutput`，导致数据流错误
+- **修复**: 修正为正确的串行依赖关系：
+  - `result_aggregation` ← `DataAnalysisOutput`
+  - `result_validation` ← `ResultAggregationOutput`  
+  - `result_formatting` ← `ResultValidationOutput`
+- **效果**: 数据流现在是完全正确的串行处理
+
 #### 类图更新说明
 - **基类接口**: 标注 `{default implementation}` 表示提供默认实现
 - **实现类**: 标注 `{inherited}` 表示继承自基类的默认实现
 - **属性完善**: 添加了更多实际存在的属性和方法
 - **方法细化**: 展示了各个类的具体实现方法
+- **数据流图**: 明确标注串行处理关系

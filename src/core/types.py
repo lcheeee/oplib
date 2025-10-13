@@ -33,6 +33,72 @@ class Metadata(TypedDict):
     updated_at: Optional[str]
 
 
+class ProcessorResult(TypedDict):
+    """处理器结果格式。"""
+    processor_type: str  # "sensor_grouping", "stage_detection", etc.
+    algorithm: str
+    process_id: str
+    result_data: Dict[str, Any]  # 具体的处理结果
+    execution_time: float
+    status: str  # "success", "error", "warning"
+    timestamp: str
+
+
+class SensorGrouping(TypedDict):
+    """传感器分组结果。"""
+    group_mappings: Dict[str, List[str]]  # 分组映射：group_name -> [sensor_names]
+    selected_groups: Dict[str, List[str]]  # 选中的分组：如 leading_thermocouples -> [sensor_names]
+    algorithm_used: str
+    total_groups: int
+    group_names: List[str]
+
+
+class StageTimeline(TypedDict):
+    """阶段时间线。"""
+    stage: str
+    time_range: Dict[str, int]  # {"start": idx, "end": idx}
+    features: Optional[Dict[str, Any]]  # 阶段特征（可选）
+
+
+class PlanItem(TypedDict):
+    """执行计划项。"""
+    stage_name: str
+    time_range: Dict[str, int]  # 阶段时间范围
+    rule_id: str
+    rule_name: str
+    condition: str
+    threshold: Optional[Union[float, str]]
+    resolved_inputs: Dict[str, List[str]]  # 已解析的输入：input_name -> [sensor_names]
+    severity: str
+    message_template: str
+
+
+class ExecutionPlan(TypedDict):
+    """执行计划。"""
+    plan_id: str
+    spec_name: str
+    spec_version: str
+    plan_items: List[PlanItem]
+    created_at: str
+    total_rules: int
+
+
+class WorkflowDataContext(TypedDict):
+    """工作流数据上下文 - 共享数据容器。"""
+    context_id: str
+    raw_data: Dict[str, List[Any]]  # 原始数据（只存储一份）
+    processor_results: Dict[str, ProcessorResult]  # 处理器结果
+    metadata: Metadata  # 元数据
+    data_version: str
+    last_updated: str
+    is_initialized: bool
+    data_source: str
+    # 新增：分层架构产物
+    sensor_grouping: Optional[SensorGrouping]  # 传感器分组结果
+    stage_timeline: Optional[List[StageTimeline]]  # 阶段时间线
+    execution_plan: Optional[ExecutionPlan]  # 执行计划
+
+
 # =============================================================================
 # 数据源层类型
 # =============================================================================

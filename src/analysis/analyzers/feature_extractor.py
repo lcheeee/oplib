@@ -3,7 +3,7 @@
 import numpy as np
 from typing import Any, Dict, List, Union
 from ...core.interfaces import BaseDataAnalyzer
-from ...core.types import SensorGroupingOutput, StageDetectionOutput, DataAnalysisOutput
+from ...core.types import WorkflowDataContext, DataAnalysisOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -16,10 +16,18 @@ class FeatureExtractor(BaseDataAnalyzer):
         self.algorithm = algorithm
         self.features = features or ["mean", "std", "skewness", "kurtosis"]
     
-    def analyze(self, data: Union[SensorGroupingOutput, StageDetectionOutput], **kwargs: Any) -> DataAnalysisOutput:
+    def analyze(self, data_context: WorkflowDataContext, **kwargs: Any) -> DataAnalysisOutput:
         """执行特征提取。"""
-        # TODO: 实现实际的特征提取逻辑
-        raise WorkflowError("特征提取器尚未实现")
+        # 记录输入信息
+        self.log_input_info(data_context, "特征提取器")
+        
+        # 创建未实现结果
+        result = self._create_unimplemented_result("特征提取器", "DataAnalysisOutput")
+        
+        # 记录输出信息
+        self._log_output(result, "特征提取器", "特征提取结果 (DataAnalysisOutput)")
+        
+        return result
     
     
 

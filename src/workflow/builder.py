@@ -37,14 +37,14 @@ from ..core.exceptions import WorkflowError
 from ..core.interfaces import LayerType
 from ..core.interfaces import LayeredTask
 from ..core.types import (
-    DataSourceOutput, SensorGroupingOutput, StageDetectionOutput,
+    WorkflowDataContext, DataSourceOutput, ProcessorResult,
     DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput,
-    ResultFormattingOutput
+    ResultFormattingOutput, SensorGrouping, StageTimeline, ExecutionPlan
 )
 
 # 工作流结果类型别名
 WorkflowResult = Union[
-    DataSourceOutput, SensorGroupingOutput, StageDetectionOutput,
+    DataSourceOutput, ProcessorResult,
     DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput,
     ResultFormattingOutput, str
 ]
@@ -56,6 +56,7 @@ from ..core.factories import (
 # 注册所有实现类
 from ..data.sources import CSVDataSource, KafkaDataSource, DatabaseDataSource, APIDataSource
 from ..data.processors import SensorGroupProcessor, StageDetectorProcessor, DataPreprocessor, DataCleaner
+from ..data.processors.spec_binding_processor import SpecBindingProcessor
 from ..analysis.analyzers import RuleEngineAnalyzer, SPCAnalyzer, FeatureExtractor, CNNPredictor, AnomalyDetector
 from ..analysis.mergers import ResultAggregator, ResultValidator, ResultFormatter
 from ..broker import FileWriter, WebhookWriter, KafkaWriter, DatabaseWriter
@@ -73,7 +74,8 @@ DataProcessingFactory.register_processor("data_preprocessor", DataPreprocessor)
 DataProcessingFactory.register_processor("data_cleaner", DataCleaner)
 
 # 注册数据分析器
-DataAnalysisFactory.register_analyzer("rule_engine", RuleEngineAnalyzer)
+DataAnalysisFactory.register_analyzer("rule_engine_analyzer", RuleEngineAnalyzer)
+DataAnalysisFactory.register_analyzer("rule_engine", RuleEngineAnalyzer)  # 兼容性
 DataAnalysisFactory.register_analyzer("spc_analyzer", SPCAnalyzer)
 DataAnalysisFactory.register_analyzer("feature_extractor", FeatureExtractor)
 DataAnalysisFactory.register_analyzer("cnn_predictor", CNNPredictor)
@@ -99,14 +101,82 @@ class WorkflowBuilder:
         self.base_dir = config_manager.base_dir
         self.logger = get_logger()
         self.rules_index = {}
+        self.spec_index = {}
+        self.stages_index = {}
+        self.data_context: WorkflowDataContext = {
+            "context_id": "",
+            "raw_data": {},
+            "processor_results": {},
+            "metadata": {},
+            "data_version": "1.0",
+            "last_updated": "",
+            "is_initialized": False,
+            "data_source": "",
+            # 新增：分层架构产物
+            "sensor_grouping": None,
+            "stage_timeline": None,
+            "execution_plan": None
+        }
     
     def _load_rules_from_config(self) -> Dict[str, Any]:
         """从配置文件加载规则定义。"""
         try:
+            # 尝试从 workflow_config.yaml 中加载规则配置
+            workflow_config = self.config_manager.get_config("workflow_config")
+            if workflow_config and "workflows" in workflow_config:
+                # 从工作流配置中获取规则配置路径
+                curing_workflow = workflow_config["workflows"].get("curing_analysis", {})
+                workflow_tasks = curing_workflow.get("workflow", [])
+                
+                # 查找规则执行任务的配置
+                for layer in workflow_tasks:
+                    if layer.get("layer") == "data_analysis":
+                        for task in layer.get("tasks", []):
+                            if task.get("id") == "rule_execution":
+                                rule_config_path = task.get("parameters", {}).get("rule_config")
+                                if rule_config_path:
+                                    return self._load_rule_config_from_file(rule_config_path)
+            
+            # 回退到默认配置
             rules_config = self.config_manager.get_rules_config()
             return {r["id"]: r for r in rules_config.get("rules", [])}
         except Exception as e:
             self.logger.warning(f"无法加载规则配置: {e}")
+            return {}
+    
+    def _load_rule_config_from_file(self, config_path: str) -> Dict[str, Any]:
+        """从文件加载规则配置。"""
+        try:
+            import yaml
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = yaml.safe_load(f)
+            return {rule["id"]: rule for rule in config.get("rules", [])}
+        except Exception as e:
+            self.logger.warning(f"无法从文件加载规则配置 {config_path}: {e}")
+            return {}
+    
+    def _load_spec_from_config(self) -> Dict[str, Any]:
+        """从配置文件加载规格定义。"""
+        try:
+            spec_config = self.config_manager.get_specification_config()
+            # 规格配置是一个字典，不是列表
+            specifications = spec_config.get("specifications", {})
+            if isinstance(specifications, dict):
+                return specifications
+            else:
+                # 如果是列表格式，转换为字典
+                return {spec["name"]: spec for spec in specifications}
+        except Exception as e:
+            self.logger.warning(f"无法加载规格配置: {e}")
+            return {}
+    
+    def _load_stages_from_config(self) -> Dict[str, Any]:
+        """从配置文件加载阶段定义。"""
+        try:
+            stages_config = self.config_manager.get_stages_config()
+            return stages_config.get("stages", {})
+        except Exception as e:
+            self.logger.warning(f"无法加载阶段配置: {e}")
             return {}
     
     def _collect_tasks(self, workflow_config: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -216,7 +286,7 @@ class WorkflowBuilder:
     def _execute_data_source_task(self, task_config: Dict[str, Any], 
                                  data_sources: Dict[str, Any], 
                                  results: Dict[str, WorkflowResult]) -> DataSourceOutput:
-        """执行数据源任务。"""
+        """执行数据源任务 - 初始化共享数据上下文。"""
         source_name = task_config.get("source")
         if not source_name or source_name not in data_sources:
             raise WorkflowError(f"数据源 '{source_name}' 不存在")
@@ -260,60 +330,99 @@ class WorkflowBuilder:
         # 读取数据
         result = data_source.read(**data_source_kwargs)
         
+        # 初始化共享数据上下文
+        self.data_context["context_id"] = f"workflow_{task_config.get('id', 'unknown')}"
+        self.data_context["raw_data"] = result.get("data", {})
+        self.data_context["metadata"] = result.get("metadata", {})
+        self.data_context["data_source"] = source_name
+        self.data_context["is_initialized"] = True
+        from src.utils.timestamp_utils import get_current_timestamp
+        self.data_context["last_updated"] = get_current_timestamp()
+        # 初始化分层架构产物
+        self.data_context["sensor_grouping"] = None
+        self.data_context["stage_timeline"] = None
+        self.data_context["execution_plan"] = None  # 实际实现中应该使用当前时间
+        
+        if self.logger:
+            self.logger.info(f"  数据上下文已初始化，数据点数量: {sum(len(values) for values in self.data_context['raw_data'].values())}")
+        
         return result
     
     def _execute_data_processing_task(self, task_config: Dict[str, Any], 
-                                     results: Dict[str, WorkflowResult]) -> Union[SensorGroupingOutput, StageDetectionOutput]:
-        """执行数据处理任务。"""
-        # 获取依赖结果
-        depends_on = task_config.get("depends_on", [])
-        input_data = None
+                                     results: Dict[str, WorkflowResult]) -> ProcessorResult:
+        """执行数据处理任务 - 使用共享数据上下文。"""
+        # 检查数据上下文是否已初始化
+        if not self.data_context.get("is_initialized", False):
+            raise WorkflowError("数据上下文未初始化，无法执行数据处理任务")
         
-        if depends_on:
-            # 使用第一个依赖的结果
-            dep_id = depends_on[0]
-            if dep_id in results:
-                input_data = results[dep_id]
-            else:
-                raise WorkflowError(f"依赖任务 '{dep_id}' 的结果不存在")
+        # 添加阶段索引（用于 stage_detection 任务）
+        task_config["stages_index"] = self.stages_index
         
-        if not input_data:
-            raise WorkflowError("数据处理任务缺少输入数据")
+        # 添加配置管理器（用于处理器初始化）
+        task_config["config_manager"] = self.config_manager
         
         # 创建处理器实例
         processor = DataProcessingFactory.create_processor(task_config)
         
-        # 处理数据
-        result = processor.process(input_data)
+        # 处理数据 - 传递共享数据上下文
+        result = processor.process(self.data_context)
+        
+        if self.logger:
+            processor_type = result.get("processor_type", "unknown")
+            status = result.get("status", "unknown")
+            self.logger.info(f"  处理器 {processor_type} 执行完成，状态: {status}")
         
         return result
     
+    def _execute_spec_binding_task(self, task_config: Dict[str, Any], 
+                                  results: Dict[str, WorkflowResult]) -> ProcessorResult:
+        """执行规格绑定任务。"""
+        try:
+            # 创建规格绑定处理器
+            processor = SpecBindingProcessor(
+                algorithm=task_config.get("algorithm", "rule_planner"),
+                spec_config=task_config.get("spec_config"),
+                rule_config=task_config.get("rule_config"),
+                process_id=task_config.get("id", "spec_binding"),
+                spec_index=self.spec_index,
+                rules_index=self.rules_index
+            )
+            
+            # 执行规格绑定
+            result = processor.process(self.data_context)
+            
+            if self.logger:
+                self.logger.info(f"  规格绑定完成，生成执行计划: {result.get('result_data', {}).get('total_rules', 0)} 条规则")
+            
+            return result
+            
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"规格绑定任务执行失败: {e}")
+            raise WorkflowError(f"规格绑定任务执行失败: {e}")
+    
     def _execute_data_analysis_task(self, task_config: Dict[str, Any], 
                                    results: Dict[str, WorkflowResult]) -> DataAnalysisOutput:
-        """执行数据分析任务。"""
-        # 获取依赖结果
-        depends_on = task_config.get("depends_on", [])
-        input_data = None
+        """执行数据分析任务 - 使用共享数据上下文。"""
+        # 检查数据上下文是否已初始化
+        if not self.data_context.get("is_initialized", False):
+            raise WorkflowError("数据上下文未初始化，无法执行数据分析任务")
         
-        if depends_on:
-            # 使用第一个依赖的结果
-            dep_id = depends_on[0]
-            if dep_id in results:
-                input_data = results[dep_id]
-            else:
-                raise WorkflowError(f"依赖任务 '{dep_id}' 的结果不存在")
-        
-        if not input_data:
-            raise WorkflowError("数据分析任务缺少输入数据")
-        
-        # 添加规则索引
+        # 添加规则索引和规格索引
         task_config["rules_index"] = self.rules_index
+        task_config["spec_index"] = self.spec_index
+        
+        # 添加配置管理器（用于分析器初始化）
+        task_config["config_manager"] = self.config_manager
         
         # 创建分析器实例
         analyzer = DataAnalysisFactory.create_analyzer(task_config)
         
-        # 分析数据
-        result = analyzer.analyze(input_data)
+        # 分析数据 - 传递共享数据上下文
+        result = analyzer.analyze(self.data_context)
+        
+        if self.logger:
+            self.logger.info(f"  数据分析完成，规则检查结果: {len(result.get('rule_results', {}))}")
         
         return result
     
@@ -333,6 +442,9 @@ class WorkflowBuilder:
         
         if not input_results:
             raise WorkflowError("结果合并任务缺少输入数据")
+        
+        # 添加配置管理器（用于合并器初始化）
+        task_config["config_manager"] = self.config_manager
         
         # 创建合并器实例
         merger = ResultMergingFactory.create_merger(task_config)
@@ -364,6 +476,9 @@ class WorkflowBuilder:
         if not input_data:
             raise WorkflowError("结果输出任务缺少输入数据")
         
+        # 添加配置管理器（用于输出器初始化）
+        task_config["config_manager"] = self.config_manager
+        
         # 创建输出器实例
         output_broker = ResultBrokerFactory.create_broker(task_config)
         
@@ -380,8 +495,10 @@ class WorkflowBuilder:
         # 存储当前工作流配置，供数据源任务使用
         self._current_workflow_config = workflow_config
         
-        # 加载规则配置
+        # 加载规则配置、规格配置和阶段配置
         self.rules_index = self._load_rules_from_config()
+        self.spec_index = self._load_spec_from_config()
+        self.stages_index = self._load_stages_from_config()
         
         # 获取配置
         data_sources = workflow_config.get("data_sources", {})
@@ -445,6 +562,8 @@ class WorkflowBuilder:
                         result = self._execute_data_source_task(task_config, data_sources, results)
                     elif layer == LayerType.DATA_PROCESSING.value:
                         result = self._execute_data_processing_task(task_config, results)
+                    elif layer == "spec_binding":
+                        result = self._execute_spec_binding_task(task_config, results)
                     elif layer == LayerType.DATA_ANALYSIS.value:
                         result = self._execute_data_analysis_task(task_config, results)
                     elif layer == LayerType.RESULT_MERGING.value:
