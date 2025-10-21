@@ -1,0 +1,10 @@
+配置项,数据点数量,最大值,最小值,数据类型,描述
+bag_pressure,328,N/A,N/A,dict,328 个数据点
+curing_pressure,328,N/A,N/A,dict,328 个数据点
+thermocouples,328,N/A,N/A,dict,328 个数据点
+leading_thermocouples,328,N/A,N/A,dict,328 个数据点
+lagging_thermocouples,328,N/A,N/A,dict,328 个数据点
+heating_rate,327,N/A,N/A,dict,327 个数据点
+soaking_duration,1,0.0,0.0,float,标量值: 0.0
+thermocouple_cross,328,N/A,N/A,dict,328 个数据点
+thermocouples_at_lower_limit_pressure,328,N/A,N/A,dict,328 个数据点
