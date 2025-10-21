@@ -7,8 +7,8 @@ from pathlib import Path
 from datetime import datetime
 from contextlib import asynccontextmanager
 
-from src.workflow import WorkflowBuilder
-from src.workflow.executor import WorkflowExecutor
+from src.workflow.builder import WorkflowBuilder
+from src.workflow.orchestrator import WorkflowOrchestrator
 from src.workflow.cache import workflow_cache, calculate_config_hash
 from src.config.manager import ConfigManager
 from src.core.exceptions import WorkflowError, ConfigurationError
@@ -37,6 +37,7 @@ app = FastAPI(
 
 class WorkflowParameters(BaseModel):
     """工作流参数模型。"""
+    process_id: str | None = None
     series_id: Optional[str] = None
     specification: Optional[str] = None
     material: Optional[str] = None
@@ -49,7 +50,7 @@ class WorkflowParameters(BaseModel):
 
 class WorkflowInputs(BaseModel):
     """工作流输入数据模型。"""
-    data_source: Optional[str] = None
+    file_path: Optional[str] = None
     online_data: Optional[bool] = None
 
 class WorkflowRequest(BaseModel):
@@ -134,10 +135,10 @@ def apply_parameter_overrides(config: Dict[str, Any], parameters: Optional[Workf
 
 def apply_input_overrides(config: Dict[str, Any], inputs: Optional[WorkflowInputs]) -> Dict[str, Any]:
     """应用输入数据覆盖。"""
-    logger.debug(f"apply_input_overrides 输入: inputs={inputs}")
+    logger.info(f"apply_input_overrides 输入: inputs={inputs}")
     
     if not inputs:
-        logger.debug("inputs 为空，返回原配置")
+        logger.info("inputs 为空，返回原配置")
         return config
     
     # 创建配置副本
@@ -146,18 +147,18 @@ def apply_input_overrides(config: Dict[str, Any], inputs: Optional[WorkflowInput
     # 确保 inputs 部分存在
     if "inputs" not in updated_config:
         updated_config["inputs"] = {}
-        logger.debug("创建 inputs 部分")
+        logger.info("创建 inputs 部分")
     
     # 更新工作流输入
     input_dict = inputs.dict(exclude_unset=True)
-    logger.debug(f"输入字典: {input_dict}")
+    logger.info(f"输入字典: {input_dict}")
     
     for key, value in input_dict.items():
         if value is not None:
             updated_config["inputs"][key] = value
-            logger.debug(f"设置 inputs[{key}] = {value}")
+            logger.info(f"设置 inputs[{key}] = {value}")
     
-    logger.debug(f"更新后配置的 inputs: {updated_config.get('inputs', {})}")
+    logger.info(f"更新后配置的 inputs: {updated_config.get('inputs', {})}")
     return updated_config
 
 def validate_and_apply_defaults(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -235,19 +236,20 @@ async def run_workflow(request: WorkflowRequest):
         logger.info("应用输入覆盖...")
         logger.debug(f"request.inputs: {request.inputs}")
         config = apply_input_overrides(config, request.inputs)
+        logger.info(f"应用输入覆盖后的配置: {config}")
         
         # 验证参数并应用默认值
         logger.info("验证参数并应用默认值...")
         config = validate_and_apply_defaults(config)
         
         # 验证输入文件
-        if request.inputs and request.inputs.data_source:
+        if request.inputs and request.inputs.file_path:
             # 规范化路径分隔符，避免控制台显示问题
-            normalized_path = request.inputs.data_source.replace('\\', '/')
+            normalized_path = request.inputs.file_path.replace('\\', '/')
             logger.info(f"验证输入文件: {normalized_path}")
             
             # 使用路径解析工具来正确处理相对路径
-            from src.utils.path_utils import resolve_path
+            from .utils.path_utils import resolve_path
             if config_manager:
                 base_dir = config_manager.get_startup_params().get('base_dir', '.')
                 resolved_path = resolve_path(base_dir, normalized_path)
@@ -278,17 +280,19 @@ async def run_workflow(request: WorkflowRequest):
         # 计算配置哈希值
         config_hash = calculate_config_hash(workflow_def)
         
-        # 尝试从缓存获取工作流函数
-        flow_fn = workflow_cache.get(request.workflow_name, config_hash)
+        # 尝试从缓存获取工作流执行计划
+        execution_plan = workflow_cache.get(request.workflow_name, config_hash)
         
-        if flow_fn is None:
-            # 缓存未命中，构建新的工作流函数
+        # 创建工作流构建器（无论是否使用缓存都需要）
+        builder = WorkflowBuilder(config_manager)
+        
+        if execution_plan is None:
+            # 缓存未命中，构建新的工作流执行计划
             logger.debug(f"缓存未命中，构建工作流: {request.workflow_name}")
-            builder = WorkflowBuilder(config_manager)
-            flow_fn = builder.build(workflow_def, request.workflow_name)
+            execution_plan = builder.build(workflow_def, request.workflow_name)
             
-            # 缓存工作流函数
-            workflow_cache.put(request.workflow_name, config_hash, flow_fn)
+            # 缓存工作流执行计划
+            workflow_cache.put(request.workflow_name, config_hash, execution_plan)
             logger.debug(f"工作流已缓存: {request.workflow_name}")
         else:
             logger.debug(f"缓存命中，使用缓存的工作流: {request.workflow_name}")
@@ -297,7 +301,10 @@ async def run_workflow(request: WorkflowRequest):
         
         # 执行工作流
         logger.info("\n开始执行工作流...")
-        executor = WorkflowExecutor()
+        orchestrator = WorkflowOrchestrator(config_manager)
+        
+        # 创建工作流上下文（从配置中获取输入参数）
+        context = builder.create_workflow_context(execution_plan, workflow_def)
         
         # 准备传递给工作流的参数
         workflow_parameters = config.get("parameters", {})
@@ -306,9 +313,13 @@ async def run_workflow(request: WorkflowRequest):
         request_time = datetime.now()
         workflow_parameters["request_time"] = request_time.isoformat()
         
+        # 将工作流参数添加到上下文中
+        for key, value in workflow_parameters.items():
+            context[key] = value
+        
         logger.info(f"传递给工作流的参数: {workflow_parameters}")
         
-        result = executor.execute_with_monitoring(flow_fn, workflow_parameters)
+        result = orchestrator.execute(execution_plan, context)
         execution_time = (datetime.now() - start_time).total_seconds()
         
         if result["success"]:
@@ -410,6 +421,21 @@ def main(startup_config_path: str = "config/startup_config.yaml", log_level: str
     logger.info("=" * 50)
     
     import uvicorn
+    from src.utils.port_utils import ensure_port_available
+
+    # 启动前检查端口占用并按需处理
+    try:
+        auto_kill = startup_params.get('auto_kill_on_port_conflict', False)
+        port_in_use_pids = ensure_port_available(startup_params['port'], auto_kill=auto_kill)
+        if port_in_use_pids:
+            if auto_kill:
+                logger.warning(f"端口 {startup_params['port']} 被占用，已尝试终止进程: {port_in_use_pids}")
+            else:
+                logger.error(f"端口 {startup_params['port']} 被占用，PID: {port_in_use_pids}。可在启动配置中开启 auto_kill_on_port_conflict 后自动处理。")
+                return
+    except Exception as e:
+        logger.error(f"端口可用性检查失败: {e}")
+        # 若检查失败，继续尝试启动，由 uvicorn 报错
     
     # 启动uvicorn服务器
     try:

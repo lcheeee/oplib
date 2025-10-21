@@ -34,6 +34,7 @@ class ConfigManager:
         self.port = startup_params.get("port", 8000)
         self.reload = startup_params.get("reload", False)
         self.log_level = startup_params.get("log_level", "info")
+        self.auto_kill_on_port_conflict = startup_params.get("auto_kill_on_port_conflict", False)
         
         # 读取系统级超时配置
         self.timeouts = self.startup_config.get("timeouts", {})
@@ -78,7 +79,9 @@ class ConfigManager:
                 elif config_name == "sensor_groups":
                     self.configs[config_name] = self.config_loader.load_sensor_groups_config(config_path)
                 elif config_name == "process_specification":
-                    self.configs[config_name] = self.config_loader.load_workflow_config(config_path)
+                    self.configs[config_name] = self.config_loader.load_process_specification_config(config_path)
+                elif config_name == "calculations":
+                    self.configs[config_name] = self.config_loader.load_calculations_config(config_path)
                 else:
                     # 通用加载
                     self.configs[config_name] = self.config_loader.load_workflow_config(config_path)
@@ -104,7 +107,8 @@ class ConfigManager:
             "host": self.host,
             "port": self.port,
             "reload": self.reload,
-            "log_level": self.log_level
+            "log_level": self.log_level,
+            "auto_kill_on_port_conflict": self.auto_kill_on_port_conflict
         }
     
     

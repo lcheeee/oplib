@@ -1,0 +1,62 @@
+version: v1
+calculations:
+  # 原始传感器组数据（直接引用，无需计算）
+  - id: "bag_pressure"
+    description: "袋内压"
+    source: "VACUUM_PRESS"
+    unit: "kPa"
+    type: "sensor_group"
+    
+  - id: "curing_pressure"
+    description: "罐压"
+    source: "CURING_PRESS"
+    unit: "kPa"
+    type: "sensor_group"
+    
+  - id: "thermocouples"
+    description: "温度传感器组"
+    source: "thermocouples"
+    unit: "℃"
+    type: "sensor_group"
+    
+  - id: "leading_thermocouples"
+    description: "领先热电偶"
+    source: "leading_thermocouples"
+    unit: "℃"
+    type: "sensor_group"
+    
+  - id: "lagging_thermocouples"
+    description: "滞后热电偶"
+    source: "lagging_thermocouples"
+    unit: "℃"
+    type: "sensor_group"
+    
+  # 复杂计算项
+  - id: "heating_rate"
+    description: "温度变化速率"
+    formula: "diff(thermocouples) / time_interval"
+    sensors: ["thermocouples"]
+    unit: "℃/min"
+    type: "calculated"
+    time_interval: 1  # 分钟
+    
+  - id: "soaking_duration"
+    description: "保温时间"
+    formula: "duration_between(thermocouples >= 174, thermocouples < 174)"
+    sensors: ["thermocouples"]
+    unit: "min"
+    type: "calculated"
+    
+  - id: "thermocouple_cross"
+    description: "热电偶交叉"
+    formula: "min(leading_thermocouples) - max(lagging_thermocouples)"
+    sensors: ["leading_thermocouples", "lagging_thermocouples"]
+    unit: "℃"
+    type: "calculated"
+    
+  - id: "thermocouples_at_lower_limit_pressure"
+    description: "降压时温度"
+    formula: "thermocouples when CURING_PRESS = 600"
+    sensors: ["thermocouples", "CURING_PRESS"]
+    unit: "℃"
+    type: "calculated"

@@ -1,4 +1,7 @@
 version: v1
+# 数据采样间隔（分钟）
+sampling_interval: 0.1
+
 stages:
   pre_heating:
     name: "预热阶段"

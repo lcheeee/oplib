@@ -1,37 +1,50 @@
 """CSV数据源实现。"""
 
 import pandas as pd
-from typing import Any, Dict
+from typing import Any, Dict, Callable
 from pathlib import Path
 from ...core.interfaces import BaseDataSource
 from ...core.types import DataSourceOutput, Metadata
 from ...core.exceptions import WorkflowError
 from ...core.base_logger import handle_workflow_errors
-from src.utils.path_utils import resolve_path
+from ...utils.path_utils import resolve_path
 
 
 class CSVDataSource(BaseDataSource):
     """CSV数据源。"""
     
-    def __init__(self, path: str, format: str = "sensor_data", 
-                 timestamp_column: str = "timestamp", **kwargs: Any) -> None:
-        super().__init__(**kwargs)  # 调用父类初始化，设置logger
+    def __init__(self, path: str, **kwargs: Any) -> None:
         self.path = path
-        self.format = format
-        self.timestamp_column = timestamp_column
         self.base_dir = kwargs.get("base_dir", ".")
-        self.algorithm = "csv_reader"  # 设置算法名称
+        # 先调用父类初始化，但不注册算法
+        super(BaseDataSource, self).__init__(**kwargs)  # 只调用 BaseLogger 的初始化
+        self.algorithm = "local_csv_reader"
+        self._algorithms: Dict[str, Callable] = {}
+        # 现在注册算法
+        self._register_algorithms()
+    
+    def _register_algorithms(self) -> None:
+        """注册可用的数据源算法。"""
+        self._register_algorithm("local_csv_reader", self._local_csv_reader)
+    
+    def read(self, **kwargs: Any) -> DataSourceOutput:
+        """读取CSV文件 - 基类接口实现。"""
+        return self._execute_algorithm(self.algorithm, **kwargs)
     
     @handle_workflow_errors("读取CSV文件")
-    def read(self, **kwargs: Any) -> DataSourceOutput:
+    def _local_csv_reader(self, **kwargs: Any) -> DataSourceOutput:
         """读取CSV文件。"""
+        # 验证必需参数
+        if not self.path:
+            raise WorkflowError("CSV数据源缺少必需参数: path")
+        
         # 解析路径
         if self.path.startswith("{") and self.path.endswith("}"):
             # 模板变量，需要从外部传入
             template_var = self.path[1:-1]
             actual_path = kwargs.get(template_var)
             if not actual_path:
-                raise WorkflowError(f"缺少模板变量: {template_var}")
+                raise WorkflowError(f"CSV数据源缺少必需参数: {template_var} (模板变量: {self.path})")
         else:
             actual_path = self.path
         
@@ -44,6 +57,7 @@ class CSVDataSource(BaseDataSource):
             self.logger.info(f"  读取文件: {full_path}")
         
         # 读取CSV文件
+        # 默认情况下 pd.read_csv() 会将CSV文件的第一行作为列名（表头）。
         df = pd.read_csv(full_path)
         
         # 转换为字典格式
@@ -52,8 +66,8 @@ class CSVDataSource(BaseDataSource):
         # 添加基本元数据
         metadata: Metadata = {
             "source_type": "csv",
-            "format": self.format,
-            "timestamp_column": self.timestamp_column,
+            "format": "sensor_data",
+            "timestamp_column": "timestamp",
             "row_count": len(df),
             "column_count": len(df.columns),
             "columns": list(df.columns),

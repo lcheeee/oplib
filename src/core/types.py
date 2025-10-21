@@ -55,32 +55,21 @@ class SensorGrouping(TypedDict):
 
 class StageTimeline(TypedDict):
     """阶段时间线。"""
-    stage: str
+    stage_id: str
     time_range: Dict[str, int]  # {"start": idx, "end": idx}
     features: Optional[Dict[str, Any]]  # 阶段特征（可选）
 
 
 class PlanItem(TypedDict):
     """执行计划项。"""
-    stage_name: str
+    stage_id: str
     time_range: Dict[str, int]  # 阶段时间范围
     rule_id: str
-    rule_name: str
     condition: str
     threshold: Optional[Union[float, str]]
     resolved_inputs: Dict[str, List[str]]  # 已解析的输入：input_name -> [sensor_names]
     severity: str
     message_template: str
-
-
-class ExecutionPlan(TypedDict):
-    """执行计划。"""
-    plan_id: str
-    spec_name: str
-    spec_version: str
-    plan_items: List[PlanItem]
-    created_at: str
-    total_rules: int
 
 
 class WorkflowDataContext(TypedDict):
@@ -95,8 +84,8 @@ class WorkflowDataContext(TypedDict):
     data_source: str
     # 新增：分层架构产物
     sensor_grouping: Optional[SensorGrouping]  # 传感器分组结果
-    stage_timeline: Optional[List[StageTimeline]]  # 阶段时间线
-    execution_plan: Optional[ExecutionPlan]  # 执行计划
+    stage_timeline: Optional[Dict[str, StageTimeline]]  # 阶段时间线
+    execution_plan: Optional[Any]  # 执行计划（使用 Any 避免循环引用）
 
 
 # =============================================================================
@@ -236,6 +225,61 @@ class FormatMetadata(TypedDict):
 
 class AnalysisSummary(TypedDict):
     """分析摘要。"""
+
+
+# =============================================================================
+# 工作流执行相关类型
+# =============================================================================
+
+class TaskDefinition(TypedDict):
+    """任务定义。"""
+    id: str
+    layer: str
+    implementation: str
+    algorithm: str
+    inputs: Dict[str, Any]
+    depends_on: List[str]
+
+
+class ExecutionPlan(TypedDict):
+    """工作流执行计划。"""
+    workflow_name: str
+    tasks: List[TaskDefinition]
+    execution_order: List[str]
+    parameters: Dict[str, Any]
+    metadata: Dict[str, Any]
+
+
+class TaskResult(TypedDict):
+    """任务执行结果。"""
+    task_id: str
+    success: bool
+    result: Any
+    execution_time: float
+    error: Optional[str]
+    metadata: Dict[str, Any]
+
+
+class WorkflowContext(TypedDict):
+    """工作流执行上下文。"""
+    context_id: str
+    raw_data: Dict[str, Any]
+    metadata: Dict[str, Any]
+    sensor_grouping: Optional[Any]
+    stage_timeline: Optional[Any]
+    execution_plan: Optional[Any]
+    last_updated: str
+    is_initialized: bool
+
+
+class WorkflowResult(TypedDict):
+    """工作流执行结果。"""
+    success: bool
+    result: Any
+    execution_time: float
+    error: Optional[str]
+    task_results: List[TaskResult]
+    metadata: Dict[str, Any]
     total_results: int
     status: str
     success_rate: Optional[float]
@@ -295,9 +339,7 @@ class WorkflowConfig(TypedDict):
     description: str
     process_id: str
     parameters: Dict[str, Any]
-    data_sources: Dict[str, Any]
     workflow: List[LayerConfig]
-    result_outputs: Dict[str, Any]
 
 
 # =============================================================================

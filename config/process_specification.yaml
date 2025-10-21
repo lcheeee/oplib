@@ -1,36 +1,41 @@
 version: v1
 specifications:
-  cps7020:
-    name: "CPS7020热压罐固化工艺规范"
-    description: "用于CMS-CP-308材料的固化工艺规范"
+  - id: "cps7020"
+    description: "CPS7020热压罐固化工艺规范 用于CMS-CP-308材料的固化工艺规范"
     material: "CMS-CP-308"
     
     stages:
-      - stage: "pre_heating"
-        rules: ["pressure_at_lower_limit"]
-        
-      - stage: "heating_phase_1"
+      - id: "pre_ventilation"
+        description: "通大气前阶段"
+        rules: ["bag_pressure_check_1"]
+
+      - id: "post_ventilation"
+        description: "通大气后阶段"
+        rules: ["curing_pressure_check_1"]
+
+      - id: "heating_phase"
+        rules: ["curing_pressure_check_2", "thermocouple_cross_heating", "thermocouples_check"]
+
+      - id: "heating_phase_1"
+        description: "升温阶段1 55℃至150℃升温阶段"
         rules: ["heating_rate_phase_1"]
         
-      - stage: "heating_phase_2"
+      - id: "heating_phase_2"
+        description: "升温阶段2 150℃至165℃升温阶段"
         rules: ["heating_rate_phase_2"]
         
-      - stage: "heating_phase_3"
+      - id: "heating_phase_3"
+        description: "升温阶段3 165℃至174℃升温阶段"
         rules: ["heating_rate_phase_3"]
         
-      - stage: "soaking"
-        rules: ["soaking_temperature", "soaking_time", "curing_pressure"]
-        
-      - stage: "cooling"
-        rules: ["cooling_rate", "cooling_pressure", "thermocouple_cross_cooling"]
+      - id: "soaking"
+        description: "保温阶段 174℃至180℃保温阶段"
+        rules: ["curing_pressure_check_2", "soaking_temperature", "soaking_time"]
+
+      - id: "cooling"
+        description: "降温阶段 180℃降至60℃降温阶段"
+        rules: ["curing_pressure_check_3", "cooling_rate", "thermocouple_cross_cooling"]
     
-    global_rules:
-      - "thermocouple_cross_heating"
-      - "bag_pressure"
-    
-    sensor_groups:
-      - "thermocouples"
-      - "leading_thermocouples"
-      - "lagging_thermocouples"
-      - "pressure_sensors"
-      - "vacuum_sensors"
+      - id: "global"
+        desctiption: "全局检查"
+        rules: ["bag_pressure_check_2", "thermocouples_at_lower_limit_pressure"]

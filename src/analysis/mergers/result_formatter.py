@@ -13,10 +13,18 @@ class ResultFormatter(BaseResultMerger):
     
     def __init__(self, algorithm: str = "standard_format", 
                  output_format: str = "json", include_metadata: bool = True, **kwargs: Any) -> None:
-        super().__init__(**kwargs)  # 调用父类初始化，设置logger
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger（会触发算法注册）
         self.algorithm = algorithm
         self.output_format = output_format
         self.include_metadata = include_metadata
+    
+    def _register_algorithms(self) -> None:
+        """注册可用的结果格式化算法。"""
+        self._register_algorithm("standard_format", self._standard_format)
+        self._register_algorithm("summary_format", self._summary_format)
+        self._register_algorithm("detailed_format", self._detailed_format)
+        # 提供一个基础回退算法，避免配置不匹配时完全失败
+        self._register_algorithm("basic_format", self._basic_format)
     
     def merge(self, results: List[Union[DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput]], **kwargs: Any) -> ResultFormattingOutput:
         """格式化结果。"""
@@ -53,7 +61,23 @@ class ResultFormatter(BaseResultMerger):
         """标准格式。"""
         # 获取时间信息
         request_time = kwargs.get("request_time", datetime.now().isoformat())
-        execution_time = kwargs.get("execution_time", datetime.now().strftime("%Y%m%d_%H%M%S"))
+        raw_execution_time = kwargs.get("execution_time")
+        # 统一为 ISO 8601 显示（报告内），文件名仍使用原模板
+        if raw_execution_time:
+            try:
+                # 优先按旧格式解析并转换（保持原有精度，不补齐微秒）
+                parsed = datetime.strptime(str(raw_execution_time), "%Y%m%d_%H%M%S")
+                execution_time = parsed.isoformat()
+            except Exception:
+                # 若已是 ISO，直接使用（保持原有精度）
+                try:
+                    parsed_iso = datetime.fromisoformat(str(raw_execution_time))
+                    execution_time = parsed_iso.isoformat()
+                except Exception:
+                    # 其他字符串，原样保留
+                    execution_time = str(raw_execution_time)
+        else:
+            execution_time = datetime.now().isoformat()
         generation_time = datetime.now().isoformat()
         
         # 处理结果数据，提取规则分析结果

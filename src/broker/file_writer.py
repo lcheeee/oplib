@@ -2,12 +2,12 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Callable
 from ..core.interfaces import BaseResultBroker
 from ..core.types import ResultFormattingOutput
 from ..core.exceptions import WorkflowError
 from ..core.base_logger import handle_workflow_errors
-from src.utils.path_utils import resolve_path
+from ..utils.path_utils import resolve_path
 
 
 class FileWriter(BaseResultBroker):
@@ -15,11 +15,29 @@ class FileWriter(BaseResultBroker):
     
     def __init__(self, algorithm: str = "json_writer", 
                  path: str = None, format: str = "json", **kwargs: Any) -> None:
-        super().__init__(**kwargs)  # 调用父类初始化，设置logger
-        self.algorithm = algorithm
         self.path = path
         self.format = format
-        self.base_dir = kwargs.get("base_dir", ".")
+        # 优先从配置管理器获取基础目录，避免依赖进程工作目录
+        config_manager = kwargs.get("config_manager")
+        if config_manager:
+            try:
+                self.base_dir = config_manager.get_startup_params().get("base_dir", ".")
+            except Exception:
+                self.base_dir = kwargs.get("base_dir", ".")
+        else:
+            self.base_dir = kwargs.get("base_dir", ".")
+        # 先调用父类初始化，但不注册算法
+        super(BaseResultBroker, self).__init__(**kwargs)  # 只调用 BaseLogger 的初始化
+        self.algorithm = algorithm
+        self._algorithms: Dict[str, Callable] = {}
+        # 现在注册算法
+        self._register_algorithms()
+    
+    def _register_algorithms(self) -> None:
+        """注册可用的文件写入算法。"""
+        self._register_algorithm("json_writer", self._write_json)
+        self._register_algorithm("file_writer", self._write_json)
+        self._register_algorithm("save_local_report", self._write_json)
     
     @handle_workflow_errors("文件写入")
     def broker(self, result: ResultFormattingOutput, **kwargs: Any) -> str:

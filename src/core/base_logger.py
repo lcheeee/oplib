@@ -16,7 +16,7 @@ class BaseLogger(ABC):
     
     def _init_logger(self) -> None:
         """初始化日志器。"""
-        from src.utils.logging_config import get_logger
+        from ..utils.logging_config import get_logger
         self.logger = get_logger()
     
     def _log_input(self, data: Any, component_name: str) -> None:

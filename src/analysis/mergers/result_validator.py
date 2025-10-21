@@ -11,10 +11,18 @@ class ResultValidator(BaseResultMerger):
     
     def __init__(self, algorithm: str = "consistency_check", 
                  validation_rules: str = None, config_manager = None, **kwargs: Any) -> None:
-        super().__init__(**kwargs)  # 调用父类初始化，设置logger
+        super().__init__(**kwargs)  # 调用父类初始化，设置logger（会触发算法注册）
         self.algorithm = algorithm
         self.validation_rules = validation_rules
         self.config_manager = config_manager
+    
+    def _register_algorithms(self) -> None:
+        """注册可用的结果验证算法。"""
+        self._register_algorithm("consistency_check", self._consistency_check)
+        self._register_algorithm("range_validation", self._range_validation)
+        self._register_algorithm("type_validation", self._type_validation)
+        # 提供一个基础回退算法，避免配置不匹配时完全失败
+        self._register_algorithm("basic_validation", self._basic_validation)
     
     def merge(self, results: List[Union[DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput]], **kwargs: Any) -> ResultValidationOutput:
         """验证结果。"""

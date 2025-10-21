@@ -1,6 +1,6 @@
 """规格绑定处理器 - 将阶段、传感器组与规则绑定生成执行计划。"""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable
 from ...core.interfaces import BaseDataProcessor
 from ...core.types import WorkflowDataContext, ProcessorResult, ExecutionPlan, PlanItem, SensorGrouping, StageTimeline
 from ...core.exceptions import WorkflowError
@@ -12,37 +12,45 @@ class SpecBindingProcessor(BaseDataProcessor):
     def __init__(self, algorithm: str = "rule_planner", 
                  spec_config: str = None, rule_config: str = None, 
                  config_manager = None, **kwargs: Any) -> None:
-        super().__init__(**kwargs)  # 调用父类初始化，设置logger
-        self.algorithm = algorithm
-        self.spec_config = spec_config
-        self.rule_config = rule_config
         self.config_manager = config_manager
-        self.process_id = kwargs.get("process_id", self._get_default_process_id())
         self.spec_index = kwargs.get("spec_index", {})
         self.rules_index = kwargs.get("rules_index", {})
+        # 先调用父类初始化，但不注册算法
+        super(BaseDataProcessor, self).__init__(**kwargs)  # 只调用 BaseLogger 的初始化
+        self.algorithm = algorithm
+        self._algorithms: Dict[str, Callable] = {}
+        # 现在注册算法
+        self._register_algorithms()
+        self.process_id = kwargs.get("process_id")
+        if not self.process_id:
+            raise WorkflowError("缺少必需参数: process_id")
+    
+    def _register_algorithms(self) -> None:
+        """注册可用的规格绑定算法。"""
+        self._register_algorithm("rule_planner", self._generate_execution_plan)
+        self._register_algorithm("spec_binder", self._generate_execution_plan)
         
-        # 加载配置
-        if spec_config and not self.spec_index:
-            self.spec_index = self._load_spec_config(spec_config)
-        if rule_config and not self.rules_index:
-            self.rules_index = self._load_rule_config(rule_config)
+        # 必须通过配置管理器获取配置，不允许硬编码路径
+        if not self.config_manager:
+            raise WorkflowError("SpecBindingProcessor 必须通过 ConfigManager 初始化，不允许直接读取配置文件")
         
-        # 如果没有指定配置文件，从配置管理器获取默认路径
-        if not self.spec_index and not spec_config:
-            if self.config_manager:
-                spec_path = self.config_manager.get_config_path("process_specification")
-                self.spec_index = self._load_spec_config(spec_path)
-            else:
-                # 回退到硬编码路径（向后兼容）
-                self.spec_index = self._load_spec_config("config/process_specification.yaml")
+        # 从配置管理器获取配置
+        if not self.spec_index:
+            spec_config = self.config_manager.get_config("process_specification")
+            specifications = spec_config.get("specifications", [])
+            # 新格式：specifications 是数组，需要转换为字典
+            self.spec_index = {spec["id"]: spec for spec in specifications}
+            
+            # 调试信息
+            if self.logger:
+                self.logger.debug(f"spec_index 内容: {self.spec_index}")
+                self.logger.debug(f"spec_index 类型: {type(self.spec_index)}")
+                for key, value in self.spec_index.items():
+                    self.logger.debug(f"  {key}: {type(value)} = {value}")
         
-        if not self.rules_index and not rule_config:
-            if self.config_manager:
-                rules_path = self.config_manager.get_config_path("process_rules")
-                self.rules_index = self._load_rule_config(rules_path)
-            else:
-                # 回退到硬编码路径（向后兼容）
-                self.rules_index = self._load_rule_config("config/process_rules.yaml")
+        if not self.rules_index:
+            rules_config = self.config_manager.get_config("process_rules")
+            self.rules_index = {rule["id"]: rule for rule in rules_config.get("rules", [])}
     
     def process(self, data_context: WorkflowDataContext, **kwargs: Any) -> ProcessorResult:
         """处理规格绑定 - 生成执行计划。"""
@@ -109,7 +117,7 @@ class SpecBindingProcessor(BaseDataProcessor):
             raise WorkflowError(f"规格绑定处理失败: {e}")
     
     def _generate_execution_plan(self, sensor_grouping: SensorGrouping, 
-                                stage_timeline: List[StageTimeline]) -> ExecutionPlan:
+                                stage_timeline: Dict[str, StageTimeline]) -> ExecutionPlan:
         """生成执行计划。"""
         plan_items = []
         
@@ -134,37 +142,35 @@ class SpecBindingProcessor(BaseDataProcessor):
             for spec_name, spec_config in self.spec_index.items():
                 if self.logger:
                     self.logger.info(f"  处理规格: {spec_name}")
+                    self.logger.debug(f"  spec_config 类型: {type(spec_config)}")
+                    self.logger.debug(f"  spec_config 内容: {spec_config}")
                 
                 stages = spec_config.get("stages", [])
                 global_rules = spec_config.get("global_rules", [])
                 
                 # 1. 处理阶段相关规则
                 for stage_config in stages:
-                    stage_name = stage_config.get("stage")
+                    stage_id = stage_config.get("id")
                     stage_rules = stage_config.get("rules", [])
                     
                     # 查找对应的阶段时间线
-                    stage_timeline_item = next(
-                        (s for s in stage_timeline if s.get("stage") == stage_name), 
-                        None
-                    )
+                    stage_timeline_item = stage_timeline.get(stage_id)
                     
-                    if stage_timeline_item:
-                        if self.logger:
-                            self.logger.info(f"    处理阶段: {stage_name} (规则: {stage_rules})")
-                        
-                        # 为该阶段的规则生成计划项
-                        for rule_id in stage_rules:
-                            if rule_id in self.rules_index:
-                                rule_config = self.rules_index[rule_id]
-                                plan_item = self._create_plan_item(
-                                    rule_id, rule_config, group_mappings, selected_groups, stage_timeline_item
-                                )
-                                if plan_item:
-                                    plan_items.append(plan_item)
-                    else:
-                        if self.logger:
-                            self.logger.info(f"    阶段 {stage_name} 未检测到，跳过相关规则")
+                    if self.logger:
+                        if stage_timeline_item:
+                            self.logger.info(f"    处理阶段: {stage_id} (规则: {stage_rules})")
+                        else:
+                            self.logger.info(f"    阶段 {stage_id} 未检测到，使用全局时间范围处理相关规则")
+
+                    # 为该阶段的规则生成计划项（未检测到阶段时使用全数据范围）
+                    for rule_id in stage_rules:
+                        if rule_id in self.rules_index:
+                            rule_config = self.rules_index[rule_id]
+                            plan_item = self._create_plan_item(
+                                rule_id, rule_config, group_mappings, selected_groups, stage_timeline_item
+                            )
+                            if plan_item:
+                                plan_items.append(plan_item)
                 
                 # 2. 处理全局规则
                 if global_rules:
@@ -197,12 +203,7 @@ class SpecBindingProcessor(BaseDataProcessor):
         from ...utils.timestamp_utils import get_current_timestamp
         return get_current_timestamp()
     
-    def _get_default_process_id(self) -> str:
-        """获取默认进程ID。"""
-        if self.config_manager:
-            process_config = self.config_manager.startup_config.get("process", {})
-            return process_config.get("default_id", "default_process")
-        return "default_process"
+    # 已移除默认 process_id 回退
     
     def _create_plan_item(self, rule_id: str, rule_config: Dict[str, Any], 
                          group_mappings: Dict[str, List[str]], 
@@ -210,7 +211,8 @@ class SpecBindingProcessor(BaseDataProcessor):
                          stage_timeline_item: Optional[StageTimeline]) -> Optional[PlanItem]:
         """创建计划项。"""
         try:
-            rule_name = rule_config.get("name", rule_id)
+            # 仅支持新结构：优先使用 description 作为规则可读名称
+            rule_name = rule_config.get("description", rule_id)
             condition = rule_config.get("condition", "")
             severity = rule_config.get("severity", "minor")
             threshold = rule_config.get("threshold")
@@ -225,10 +227,9 @@ class SpecBindingProcessor(BaseDataProcessor):
                 time_range = {"start": 0, "end": -1}  # 全局规则使用全部数据
             
             plan_item: PlanItem = {
-                "stage_name": stage_timeline_item.get("stage", "global") if stage_timeline_item else "global",
+                "stage_id": stage_timeline_item.get("stage_id", "global") if stage_timeline_item else "global",
                 "time_range": time_range,
                 "rule_id": rule_id,
-                "rule_name": rule_name,
                 "condition": condition,
                 "threshold": threshold,
                 "resolved_inputs": resolved_inputs,
@@ -275,40 +276,3 @@ class SpecBindingProcessor(BaseDataProcessor):
         
         return resolved_inputs
     
-    def _load_spec_config(self, config_path: str) -> Dict[str, Any]:
-        """加载规格配置文件。"""
-        try:
-            import yaml
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config = yaml.safe_load(f)
-            # 规格配置是一个字典，不是列表
-            specifications = config.get("specifications", {})
-            if isinstance(specifications, dict):
-                return specifications
-            else:
-                # 如果是列表格式，转换为字典
-                return {spec["name"]: spec for spec in specifications}
-        except ImportError:
-            if self.logger:
-                self.logger.warning("PyYAML 未安装，无法加载规格配置")
-            return {}
-        except Exception as e:
-            if self.logger:
-                self.logger.warning(f"无法加载规格配置 {config_path}: {e}")
-            return {}
-    
-    def _load_rule_config(self, config_path: str) -> Dict[str, Any]:
-        """加载规则配置文件。"""
-        try:
-            import yaml
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config = yaml.safe_load(f)
-            return {rule["id"]: rule for rule in config.get("rules", [])}
-        except ImportError:
-            if self.logger:
-                self.logger.warning("PyYAML 未安装，无法加载规则配置")
-            return {}
-        except Exception as e:
-            if self.logger:
-                self.logger.warning(f"无法加载规则配置 {config_path}: {e}")
-            return {}

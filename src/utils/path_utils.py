@@ -19,6 +19,16 @@ def resolve_path(base_dir: Union[str, Path], file_path: str) -> str:
     
     # 相对路径，与 base_dir 拼接
     resolved_path = base_path / file_path
+    
+    # 如果拼接后的路径存在，返回它
+    if resolved_path.exists():
+        return str(resolved_path)
+    
+    # 如果拼接后的路径不存在，尝试直接使用原路径
+    if file_path_obj.exists():
+        return str(file_path_obj)
+    
+    # 最后返回拼接后的路径（即使不存在）
     return str(resolved_path)
 
 

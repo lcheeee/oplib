@@ -1,51 +1,33 @@
 version: v1
-
-# 传感器组配置文件
-# 定义各种传感器组及其对应的数据列
-
 sensor_groups:
-  # 温度传感器组
+  VACUUM_PRESS:
+    description: "袋内压传感器（真空压力）"
+    columns: "VPRB1"
+    unit: "kPa"
+
+  CURING_PRESS:
+    description: "罐内压传感器"
+    columns: "PRESS"
+    unit: "kPa"
+    
   thermocouples:
     description: "所有热电偶传感器"
     columns: "PTC10,PTC11,PTC23,PTC24"
-    data_type: "temperature"
     unit: "°C"
     
   leading_thermocouples:
     description: "前导热电偶传感器"
     columns: "PTC10,PTC11"
-    data_type: "temperature"
     unit: "°C"
     
   lagging_thermocouples:
     description: "滞后热电偶传感器"
     columns: "PTC23,PTC24"
-    data_type: "temperature"
     unit: "°C"
-
-  # 压力传感器组
-  pressure_sensors:
-    description: "压力传感器"
-    columns: "PRESS"
-    data_type: "pressure"
-    unit: "kPa"
-    
-  vacuum_sensors:
-    description: "真空传感器"
-    columns: "VPRB1"
-    data_type: "pressure"
-    unit: "kPa"
 
   # 时间戳
   timestamps:
     description: "时间戳列"
     columns: "timestamp"
-    data_type: "timestamp"
     unit: "datetime"
 
-# 传感器组别名映射（向后兼容）
-aliases:
-  # 为了保持与现有计算定义的兼容性
-  temperature: "thermocouples"
-  pressure: "pressure_sensors"
-  time: "timestamps"

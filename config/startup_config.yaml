@@ -5,9 +5,9 @@ version: v2
 config_files:
   workflow_config: "config/workflow_config.yaml"
   sensor_groups: "config/sensor_groups.yaml"
+  calculations: "config/calculations.yaml"
   process_rules: "config/process_rules.yaml"
-  process_stages: "config/process_stages.yaml"
-  calculation_definitions: "config/calculation_definitions.yaml"
+  process_stages: "config/process_stages_by_time.yaml"
   process_specification: "config/process_specification.yaml"
 
 # 启动参数
@@ -18,6 +18,7 @@ startup:
   port: 8000
   reload: false
   log_level: "info" #debug, info, warning, error, critical
+  auto_kill_on_port_conflict: true # 启动前若端口被占用，是否自动杀掉占用进程
 
 # 系统级超时设置（用于组件初始化时的默认值）
 timeouts:
@@ -25,8 +26,4 @@ timeouts:
   database: 30
   api: 30
   webhook: 30
-
-# 默认进程配置
-process:
-  default_id: "default_process"
   

@@ -2,11 +2,10 @@
 
 from .interfaces import (
     LayerType, BaseDataSource, BaseDataProcessor, BaseDataAnalyzer,
-    BaseResultMerger, BaseResultBroker, LayeredTask
+    BaseResultMerger, BaseResultBroker
 )
 from .factories import (
-    DataSourceFactory, DataProcessingFactory, DataAnalysisFactory,
-    ResultMergingFactory, ResultBrokerFactory, WorkflowFactory
+    AlgorithmDrivenFactory, global_factory_registry, component_factory
 )
 from .exceptions import OPLibError, ConfigurationError, DataProcessingError, AnalysisError, WorkflowError, ValidationError
 
@@ -18,14 +17,10 @@ __all__ = [
     "BaseDataAnalyzer",
     "BaseResultMerger",
     "BaseResultBroker",
-    "LayeredTask",
     # 分层工厂
-    "DataSourceFactory",
-    "DataProcessingFactory",
-    "DataAnalysisFactory",
-    "ResultMergingFactory",
-    "ResultBrokerFactory",
-    "WorkflowFactory",
+    "AlgorithmDrivenFactory",
+    "global_factory_registry",
+    "component_factory",
     # 异常类
     "OPLibError",
     "ConfigurationError",

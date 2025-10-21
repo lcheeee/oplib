@@ -1,6 +1,7 @@
 """工作流缓存管理器。"""
 
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, Union
+from ..core.types import ExecutionPlan
 from threading import Lock
 import time
 from collections import OrderedDict
@@ -22,16 +23,16 @@ class WorkflowCache:
         self.hit_count = 0
         self.miss_count = 0
     
-    def get(self, workflow_name: str, config_hash: str) -> Optional[Callable]:
+    def get(self, workflow_name: str, config_hash: str) -> Optional[Union[Callable, ExecutionPlan]]:
         """
-        获取缓存的工作流函数。
+        获取缓存的工作流函数或执行计划。
         
         Args:
             workflow_name: 工作流名称
             config_hash: 配置哈希值
             
         Returns:
-            缓存的工作流函数，如果不存在则返回 None
+            缓存的工作流函数或执行计划，如果不存在则返回 None
         """
         cache_key = f"{workflow_name}:{config_hash}"
         
@@ -42,21 +43,21 @@ class WorkflowCache:
                 self.cache[cache_key] = entry
                 self.hit_count += 1
                 # 缓存命中
-                return entry["flow_func"]
+                return entry["workflow_item"]
             else:
                 self.miss_count += 1
                 # 缓存未命中
         
         return None
     
-    def put(self, workflow_name: str, config_hash: str, flow_func: Callable):
+    def put(self, workflow_name: str, config_hash: str, workflow_item: Union[Callable, ExecutionPlan]):
         """
-        缓存工作流函数。
+        缓存工作流函数或执行计划。
         
         Args:
             workflow_name: 工作流名称
             config_hash: 配置哈希值
-            flow_func: 工作流函数
+            workflow_item: 工作流函数或执行计划
         """
         cache_key = f"{workflow_name}:{config_hash}"
         
@@ -68,7 +69,7 @@ class WorkflowCache:
             
             # 添加新条目到末尾
             self.cache[cache_key] = {
-                "flow_func": flow_func,
+                "workflow_item": workflow_item,
                 "workflow_name": workflow_name,
                 "config_hash": config_hash,
                 "cached_at": time.time()

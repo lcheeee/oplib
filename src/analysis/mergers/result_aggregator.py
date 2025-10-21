@@ -1,6 +1,6 @@
 """结果聚合器。"""
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Callable
 from ...core.interfaces import BaseResultMerger
 from ...core.types import DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput
 from ...core.exceptions import WorkflowError
@@ -11,13 +11,25 @@ class ResultAggregator(BaseResultMerger):
     
     def __init__(self, algorithm: str = "weighted_average", 
                  weights: Dict[str, float] = None, **kwargs: Any) -> None:
-        super().__init__(**kwargs)  # 调用父类初始化，设置logger
-        self.algorithm = algorithm
         self.weights = weights or {}
+        # 先调用父类初始化，但不注册算法
+        super(BaseResultMerger, self).__init__(**kwargs)  # 只调用 BaseLogger 的初始化
+        self.algorithm = algorithm
+        self._algorithms: Dict[str, Callable] = {}
+        # 现在注册算法
+        self._register_algorithms()
+    
+    def _register_algorithms(self) -> None:
+        """注册可用的结果聚合算法。"""
+        self._register_algorithm("weighted_average", self._weighted_average_merge)
+        self._register_algorithm("simple_merge", self._simple_merge)
+        self._register_algorithm("result_aggregation", self._weighted_average_merge)
+        # 兼容工作流配置中的命名
+        self._register_algorithm("comprehensive_aggregator", self._simple_merge)
     
     def merge(self, results: List[Union[DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput]], **kwargs: Any) -> ResultAggregationOutput:
         """合并结果。"""
-        from src.utils.logging_config import get_logger
+        from ...utils.logging_config import get_logger
         logger = get_logger()
         
         try:

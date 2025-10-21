@@ -13,8 +13,6 @@ class IoTDataSource(BaseDataSource):
     def __init__(self, **kwargs: Any) -> None:
         """初始化IoT数据源。"""
         self.base_dir = kwargs.get("base_dir", ".")
-        self.timestamp_column = kwargs.get("timestamp_column", "timestamp")
-        self.format = kwargs.get("format", "sensor_data")
     
     @abstractmethod
     def _read_raw_data(self, **kwargs: Any) -> Dict[str, Any]:
@@ -40,7 +38,8 @@ class IoTDataSource(BaseDataSource):
         
         return {
             "source_type": self.get_source_type(),
-            "format": self.format,
+            "format": "sensor_data",
+            "timestamp_column": "timestamp",
             "row_count": row_count,
             "column_count": len(standardized_data),
             "columns": list(standardized_data.keys())
