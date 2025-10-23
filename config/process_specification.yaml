@@ -37,5 +37,5 @@ specifications:
         rules: ["curing_pressure_check_3", "cooling_rate", "thermocouple_cross_cooling"]
     
       - id: "global"
-        desctiption: "全局检查"
-        rules: ["bag_pressure_check_2", "thermocouples_at_lower_limit_pressure"]
+        description: "全局检查"
+        rules: ["bag_pressure_check_2"]

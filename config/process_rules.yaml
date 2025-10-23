@@ -32,8 +32,8 @@ rules:
   
   - id: "thermocouples_check"
     description: "罐压下限时温度检查。罐压下限时温度应小于55℃"
-    condition: "max(thermocouples_at_lower_limit_pressure) < 55"
-    calculations: ["thermocouples_at_lower_limit_pressure"]
+    condition: "first(thermocouples) < 55"
+    calculations: ["thermocouples"]
     severity: "critical"
     
   - id: "heating_rate_phase_1"
@@ -74,12 +74,12 @@ rules:
     
   - id: "thermocouple_cross_heating"
     description: "升温阶段热电偶交叉检查。升温阶段领先偶与滞后偶温差应≥-5.6℃"
-    condition: "min(thermocouple_cross) >= -5.6"
-    calculations: ["thermocouple_cross"]
+    condition: "min(thermocouple_cross_heating) >= -5.6"
+    calculations: ["thermocouple_cross_heating"]
     severity: "minor"
     
   - id: "thermocouple_cross_cooling"
     description: "降温阶段热电偶交叉检查。降温阶段领先偶与滞后偶温差应≤5.6℃"
-    condition: "max(thermocouple_cross) <= 5.6"
-    calculations: ["thermocouple_cross"]
+    condition: "max(thermocouple_cross_cooling) <= 5.6"
+    calculations: ["thermocouple_cross_cooling"]
     severity: "minor"

@@ -34,29 +34,28 @@ calculations:
   # 复杂计算项
   - id: "heating_rate"
     description: "温度变化速率"
-    formula: "diff(thermocouples) / time_interval"
-    sensors: ["thermocouples"]
+    formula: "rate(thermocouples, step=1, axis=0, timestamps=timestamps)"
+    sensors: ["thermocouples", "timestamps"]
     unit: "℃/min"
     type: "calculated"
-    time_interval: 1  # 分钟
     
   - id: "soaking_duration"
     description: "保温时间"
-    formula: "duration_between(thermocouples >= 174, thermocouples < 174)"
-    sensors: ["thermocouples"]
+    formula: "intervals(all(thermocouples >= 174, axis=1), timestamps=timestamps)"
+    sensors: ["thermocouples", "timestamps"]
     unit: "min"
     type: "calculated"
     
-  - id: "thermocouple_cross"
+  - id: "thermocouple_cross_heating"
     description: "热电偶交叉"
-    formula: "min(leading_thermocouples) - max(lagging_thermocouples)"
+    formula: "max(leading_thermocouples, axis=1) - min(lagging_thermocouples, axis=1)"
     sensors: ["leading_thermocouples", "lagging_thermocouples"]
     unit: "℃"
     type: "calculated"
-    
-  - id: "thermocouples_at_lower_limit_pressure"
-    description: "降压时温度"
-    formula: "thermocouples when CURING_PRESS = 600"
-    sensors: ["thermocouples", "CURING_PRESS"]
+
+  - id: "thermocouple_cross_cooling"
+    description: "热电偶交叉"
+    formula: "min(leading_thermocouples, axis=1) - max(lagging_thermocouples, axis=1)"
+    sensors: ["leading_thermocouples", "lagging_thermocouples"]
     unit: "℃"
     type: "calculated"

@@ -146,16 +146,24 @@ class TaskExecutor:
         if self.config_manager:
             inputs['config_manager'] = self.config_manager
         
+        # 添加工作流参数
+        if 'process_id' in context:
+            inputs['process_id'] = context['process_id']
+        if 'series_id' in context:
+            inputs['series_id'] = context['series_id']
+        if 'calculation_date' in context:
+            inputs['calculation_date'] = context['calculation_date']
+        
         # 提取 debug_mode 参数（如果存在）
         debug_mode = inputs.pop('debug_mode', False)
         if debug_mode:
-            inputs['debug_mode'] = debug_mode
             self.logger.info(f"  启用调试模式: {debug_mode}")
         
         # 创建数据分析器组件
         analyzer = component_factory.create_data_analyzer(
             task_def['implementation'],
             task_def['algorithm'],
+            debug_mode=debug_mode,
             **inputs
         )
         

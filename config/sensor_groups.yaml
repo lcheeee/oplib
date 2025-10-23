@@ -28,6 +28,6 @@ sensor_groups:
   # 时间戳
   timestamps:
     description: "时间戳列"
-    columns: "timestamp"
+    columns: "autoclaveTime"
     unit: "datetime"
 

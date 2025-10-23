@@ -200,8 +200,9 @@ class SpecBindingProcessor(BaseDataProcessor):
     
     def _get_current_timestamp(self) -> str:
         """获取当前时间戳。"""
-        from ...utils.timestamp_utils import get_current_timestamp
-        return get_current_timestamp()
+        from ...utils.time_utils import TimeUtils
+        time_utils = TimeUtils(logger=self.logger)
+        return time_utils.get_current_timestamp()
     
     # 已移除默认 process_id 回退
     

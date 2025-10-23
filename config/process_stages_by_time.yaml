@@ -7,62 +7,62 @@ stages:
   - id: "pre_ventilation"
     description: "通大气前阶段：保温结束后的袋内压检查阶段"
     time_range:
-      start: 0
-      end: 1
-    unit: "minutes"
+      start: "2022-11-03T13:07:21"
+      end: "2022-11-03T13:08:21"
+    unit: "datetime"
 
   - id: "post_ventilation"
     description: "通大气后阶段：通大气后的罐压检查阶段"
     time_range:
-      start: 1
-      end: 300
-    unit: "minutes"
+      start: "2022-11-03T13:08:21"
+      end: "2022-11-03T18:34:21"
+    unit: "datetime"
 
   - id: "heating_phase"
     description: "升温阶段"
     time_range:
-      start: 30
-      end: 150
-    unit: "minutes"
-
+      start: "2022-11-03T13:30:21"
+      end: "2022-11-03T14:30:21"
+    unit: "datetime"
+        
   - id: "heating_phase_1"
     description: "升温阶段1：55℃至150℃升温阶段"
     time_range:
-      start: 30
-      end: 90
-    unit: "minutes"
+      start: "2022-11-03T13:30:21"
+      end: "2022-11-03T14:00:21"
+    unit: "datetime"
         
   - id: "heating_phase_2"
     description: "升温阶段2：150℃至165℃升温阶段"
     time_range:
-      start: 90
-      end: 120
-    unit: "minutes"
+      start: "2022-11-03T14:00:21"
+      end: "2022-11-03T14:20:21"
+    unit: "datetime"
         
   - id: "heating_phase_3"
     description: "升温阶段3：165℃至174℃升温阶段"
     time_range:
-      start: 120
-      end: 150
-    unit: "minutes"
+      start: "2022-11-03T14:20:21"
+      end: "2022-11-03T14:30:21"
+    unit: "datetime"
         
   - id: "soaking"
     description: "保温阶段：174℃至180℃保温阶段"
     time_range:
-      start: 150
-      end: 200
-    unit: "minutes"
+      start: "2022-11-03T14:30:21"
+      end: "2022-11-03T15:20:21"
+    unit: "datetime"
 
   - id: "cooling"
     description: "降温阶段：180℃降至60℃降温阶段"
     time_range:
-      start: 200
-      end: 300
-    unit: "minutes"
+      start: "2022-11-03T15:20:21"
+      end: "2022-11-03T18:34:21"
+    unit: "datetime"
 
   - id: "global"
     description: "全局"
     time_range:
-      start: 0
-      end: 300
-    unit: "minutes"
+      start: "2022-11-03T13:07:21"
+      end: "2022-11-03T18:34:21"
+    unit: "datetime"

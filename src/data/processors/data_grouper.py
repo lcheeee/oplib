@@ -1,10 +1,11 @@
 """传感器编组处理器。"""
 
-from typing import Any, Dict, Callable
+from typing import Any, Dict, Callable, List
 from ...core.interfaces import BaseDataProcessor
 from ...core.types import WorkflowDataContext, ProcessorResult, SensorGrouping
 from ...core.exceptions import WorkflowError
 from ...config.manager import ConfigManager
+from ...utils.time_utils import TimeUtils
 
 
 class DataGrouper(BaseDataProcessor):
@@ -161,6 +162,10 @@ class DataGrouper(BaseDataProcessor):
             if self.logger:
                 self.logger.info("  没有指定具体传感器，使用配置文件中的全部分组")
         
+        # 统一时间格式转换：将所有非datetime格式转换为datetime
+        time_utils = TimeUtils(logger=self.logger)
+        time_utils.normalize_time_formats(sensor_data, sensor_groups)
+        
         return {
             "group_mappings": group_mappings,
             "selected_groups": selected_groups,
@@ -169,7 +174,8 @@ class DataGrouper(BaseDataProcessor):
             "group_names": list(group_mappings.keys())
         }
     
+    
     def _get_current_timestamp(self) -> str:
         """获取当前时间戳。"""
-        from ...utils.timestamp_utils import get_current_timestamp
-        return get_current_timestamp()
+        time_utils = TimeUtils(logger=self.logger)
+        return time_utils.get_current_timestamp()

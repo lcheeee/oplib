@@ -5,11 +5,11 @@ import sys
 from pathlib import Path
 
 # 添加src目录到Python路径
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from src.config.manager import ConfigManager
-from src.workflow.builder import WorkflowBuilder
-from src.workflow.executor import WorkflowExecutor
+from config.manager import ConfigManager
+from workflow.builder import WorkflowBuilder
+from workflow.executor import WorkflowExecutor
 
 def test_direct_workflow():
     """直接测试工作流执行。"""

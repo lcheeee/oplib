@@ -1,0 +1,40 @@
+# OPLib 开发依赖 - 完整安装
+# 包含所有可选功能和开发工具
+
+# 核心依赖
+-r requirements-core.txt
+
+# 开发和测试工具
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+black>=22.0.0
+flake8>=5.0.0
+mypy>=1.0.0
+
+# 机器学习（SPC分析、异常检测等）
+scikit-learn>=1.1.0
+scipy>=1.9.0
+
+# 可视化（图表生成）
+matplotlib>=3.5.0
+seaborn>=0.11.0
+plotly>=5.0.0
+
+# Kafka支持（如果需要流式数据）
+kafka-python>=2.0.0
+
+# 数据库扩展支持
+sqlalchemy>=1.4.0
+alembic>=1.8.0
+
+# 监控和性能分析
+memory-profiler>=0.60.0
+line-profiler>=4.0.0
+
+# 文档生成
+sphinx>=5.0.0
+sphinx-rtd-theme>=1.0.0
+
+# 规则引擎（备用，现在使用AST引擎）
+rule-engine>=4.5.0
