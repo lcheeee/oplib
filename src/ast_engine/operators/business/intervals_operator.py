@@ -124,7 +124,7 @@ class IntervalsOperator(BaseOperator):
         return segments
     
     def _convert_to_timeseries_format(self, segments, timestamps):
-        """将区间数据转换为时间序列格式，每个时间点输出剩余duration"""
+        """将区间数据转换为时间序列格式，选取每个开始时间点及持续时间"""
         import logging
         logger = logging.getLogger(__name__)
         
@@ -138,50 +138,20 @@ class IntervalsOperator(BaseOperator):
                 logger.info("IntervalsOperator调试: 没有找到区间，返回空时间序列")
                 return []
             
-            # 如果没有时间戳信息，返回原始格式
-            if timestamps is None or len(timestamps) == 0:
-                logger.warning("IntervalsOperator调试: 没有时间戳信息，返回原始格式")
-                return segments
-            
-            # 转换为时间序列格式：为每个时间点计算剩余duration
+            # 转换为时间序列格式：每个区间输出一个时间点
             result_timeseries = []
-            logger.info(f"IntervalsOperator调试: timestamps类型={type(timestamps)}, 长度={len(timestamps)}")
-            logger.info(f"IntervalsOperator调试: 第一个时间戳={timestamps[0]}, 类型={type(timestamps[0])}")
+            logger.info(f"IntervalsOperator调试: 找到 {len(segments)} 个区间")
             
-            # 为每个时间点计算剩余duration
-            for i, timestamp in enumerate(timestamps):
-                remaining_duration = 0
+            for i, segment in enumerate(segments):
+                # 获取start时刻的时间戳（_find_segments已经存储了时间戳值）
+                start_timestamp = segment.get('start', f"2022-11-03T13:{7 + i:02d}:21")
+                duration = segment.get('duration', 0)
                 
-                # 检查当前时间点是否在任何区间内
-                for segment in segments:
-                    start_time = segment.get('start')
-                    end_time = segment.get('end')
-                    total_duration = segment.get('duration', 0)
-                    
-                    # 如果当前时间戳在区间内
-                    if start_time is not None and end_time is not None:
-                        # 比较时间戳（假设时间戳是可比较的）
-                        if start_time <= timestamp <= end_time:
-                            # 计算剩余duration
-                            if isinstance(start_time, (int, float)) and isinstance(timestamp, (int, float)):
-                                # 数值时间戳
-                                elapsed = timestamp - start_time
-                            else:
-                                # 字符串时间戳，需要转换
-                                try:
-                                    from datetime import datetime
-                                    start_dt = datetime.fromisoformat(str(start_time).replace('Z', '+00:00'))
-                                    current_dt = datetime.fromisoformat(str(timestamp).replace('Z', '+00:00'))
-                                    elapsed = (current_dt - start_dt).total_seconds() / 60  # 转换为分钟
-                                except:
-                                    elapsed = 0
-                            
-                            remaining_duration = max(0, total_duration - elapsed)
-                            break
+                logger.info(f"IntervalsOperator调试: 区间{i}, start_timestamp={start_timestamp}, duration={duration}")
                 
                 result_timeseries.append({
-                    'timestamp': timestamp,
-                    'value': remaining_duration
+                    'timestamp': start_timestamp,
+                    'value': duration
                 })
             
             logger.info(f"IntervalsOperator调试: 转换为时间序列格式，长度={len(result_timeseries)}")

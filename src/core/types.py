@@ -202,12 +202,6 @@ class ValidationInfo(TypedDict):
     execution_time: Optional[float]
 
 
-class ResultValidationOutput(TypedDict):
-    """结果验证输出格式。"""
-    validation_result: ValidationResult
-    validation_info: ValidationInfo
-
-
 class TimingInfo(TypedDict):
     """时间信息。"""
     request_time: str
@@ -394,8 +388,7 @@ SensorDataDict = Dict[str, List[Any]]
 # 输出结果格式
 OutputResult = Union[str, DataSourceOutput, SensorGroupingOutput, 
                     StageDetectionOutput, DataAnalysisOutput, 
-                    ResultAggregationOutput, ResultValidationOutput, 
-                    ResultFormattingOutput]
+                    ResultAggregationOutput, ResultFormattingOutput]
 
 
 # =============================================================================
@@ -452,8 +445,7 @@ def is_valid_data_analysis_output(result: DataAnalysisOutput) -> bool:
 
 def validate_workflow_data(data: Union[DataSourceOutput, SensorGroupingOutput, 
                                       StageDetectionOutput, DataAnalysisOutput, 
-                                      ResultAggregationOutput, ResultValidationOutput, 
-                                      ResultFormattingOutput], layer: str) -> bool:
+                                      ResultAggregationOutput, ResultFormattingOutput], layer: str) -> bool:
     """验证工作流数据是否符合指定层级的格式要求。"""
     if layer == "data_source":
         return is_valid_data_source_output(data)
@@ -467,6 +459,6 @@ def validate_workflow_data(data: Union[DataSourceOutput, SensorGroupingOutput,
     elif layer == "data_analysis":
         return is_valid_data_analysis_output(data)
     elif layer == "result_merging":
-        return isinstance(data, (ResultAggregationOutput, ResultValidationOutput, ResultFormattingOutput))
+        return isinstance(data, (ResultAggregationOutput, ResultFormattingOutput))
     else:
         return True  # 未知层级，默认通过

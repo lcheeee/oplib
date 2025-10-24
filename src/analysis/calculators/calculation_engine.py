@@ -50,6 +50,10 @@ class CalculationEngine(BaseLogger):
         
         # 从数据中提取传感器数据
         raw_data = data.get("raw_data", {})
+        if not isinstance(raw_data, dict):
+            self.logger.error(f"错误: raw_data 不是字典类型，而是 {type(raw_data)}: {raw_data}")
+            raw_data = {}
+        
         sensor_grouping = data.get("sensor_grouping", {})
         
         # 根据传感器分组映射关系提取传感器组数据

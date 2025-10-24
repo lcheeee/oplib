@@ -324,12 +324,19 @@ async def run_workflow(request: WorkflowRequest):
         
         if result["success"]:
             logger.info(f"\nAPI 响应: 工作流执行成功")
-            logger.info(f"结果路径: {result['result']}")
+            result_data = result["result"]
+            logger.info(f"结果类型: {type(result_data)}")
+            if isinstance(result_data, str):
+                logger.info(f"结果路径: {result_data}")
+                result_path = result_data
+            else:
+                logger.info(f"结果数据: {result_data}")
+                result_path = "内存中的结果数据"
             logger.info(f"总执行时间: {execution_time:.2f} 秒")
             return WorkflowResponse(
                 status="success",
                 execution_time=execution_time,
-                result_path=result["result"],
+                result_path=result_path,
                 workflow_name=request.workflow_name,
                 message="工作流执行成功"
             )

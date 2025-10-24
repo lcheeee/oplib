@@ -19,6 +19,7 @@ def test_simple_workflow():
     request_data = {
         "workflow_name": "curing_analysis",
         "parameters": {
+            "process_id": "TEST_PROCESS_001",
             "series_id": "TEST_001",
             "calculation_date": "20250928"
         },

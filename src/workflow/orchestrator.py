@@ -25,6 +25,12 @@ class WorkflowOrchestrator:
         self.logger.info(f"任务总数: {len(plan['tasks'])}")
         self.logger.info(f"执行顺序: {' -> '.join(plan['execution_order'])}")
         
+        # 添加详细的执行顺序信息
+        for i, task_id in enumerate(plan['execution_order'], 1):
+            task_def = self._find_task_definition(plan['tasks'], task_id)
+            if task_def:
+                self.logger.info(f"  {i}. {task_id} (层级: {task_def['layer']}, 实现: {task_def['implementation']})")
+        
         task_results: List[TaskResult] = []
         context["is_initialized"] = True
         
@@ -36,6 +42,9 @@ class WorkflowOrchestrator:
                 if not task_def:
                     raise WorkflowError(f"找不到任务定义: {task_id}")
                 
+                # 添加任务执行前的日志
+                self.logger.info(f"\n[{index}/{total_tasks}] 准备执行任务: {task_id} (层级: {task_def['layer']})")
+                
                 # 执行任务
                 task_result = self._execute_task(task_def, context, current_index=index, total_tasks=total_tasks)
                 task_results.append(task_result)
@@ -44,14 +53,28 @@ class WorkflowOrchestrator:
                 self._update_context(context, task_result)
                 
                 if not task_result['success']:
+                    self.logger.error(f"任务 {task_id} 执行失败: {task_result['error']}")
                     raise WorkflowError(f"任务执行失败: {task_id} - {task_result['error']}")
+                else:
+                    self.logger.info(f"任务 {task_id} 执行成功")
             
             execution_time = time.time() - start_time
             self.logger.info(f"工作流执行成功！总耗时: {execution_time:.2f} 秒")
             
+            # 添加调试日志
+            raw_data = context.get("raw_data", {})
+            formatted_results = context.get("formatted_results", {})
+            self.logger.info(f"工作流执行成功 - raw_data 类型: {type(raw_data)}")
+            self.logger.info(f"工作流执行成功 - formatted_results 类型: {type(formatted_results)}")
+            if isinstance(raw_data, str):
+                self.logger.error(f"错误: raw_data 是字符串而不是字典: {raw_data}")
+            
+            # 优先返回格式化后的结果，如果没有则返回原始数据
+            result_data = formatted_results if formatted_results else raw_data
+            
             return {
                 "success": True,
-                "result": context.get("raw_data", {}),
+                "result": result_data,
                 "execution_time": execution_time,
                 "error": None,
                 "task_results": task_results,
@@ -97,30 +120,56 @@ class WorkflowOrchestrator:
             result = task_result['result']
             
             # 定义任务结果到上下文字段的映射
-            task_context_mapping = {
-                "load_primary_data": {
-                    "raw_data": result.get("data", {}),
-                    "metadata": result.get("metadata", {}),
-                    "data_source": task_id
-                },
-                "sensor_grouping": {
-                    "sensor_grouping": result.get("result_data", {})
-                },
-                "stage_detection": {
-                    "stage_timeline": result.get("result_data", {})
-                },
-                "spec_binding": {
-                    "execution_plan": result.get("result_data", {})
+            if isinstance(result, dict):
+                task_context_mapping = {
+                    "load_primary_data": {
+                        "raw_data": result.get("data", {}),
+                        "metadata": result.get("metadata", {}),
+                        "data_source": task_id
+                    },
+                    "sensor_grouping": {
+                        "sensor_grouping": result.get("result_data", {})
+                    },
+                    "stage_detection": {
+                        "stage_timeline": result.get("result_data", {})
+                    },
+                    "spec_binding": {
+                        "execution_plan": result.get("result_data", {})
+                    },
+                    "rule_execution": {
+                        "rule_results": result.get("rule_results", {})
+                    },
+                    "quality_analysis": {
+                        "quality_results": result
+                    },
+                    "result_aggregation": {
+                        "aggregated_results": result.get("aggregated_result", {})
+                    },
+                    "result_validation": {
+                        "validation_results": result.get("validation_result", {})
+                    },
+                    "result_formatting": {
+                        "formatted_results": result.get("formatted_result", {})
+                    }
                 }
-            }
+            else:
+                # 如果结果不是字典，创建空的映射
+                task_context_mapping = {}
             
             # 更新上下文
             if task_id in task_context_mapping:
+                # 添加调试日志
+                self.logger.info(f"更新上下文 - 任务: {task_id}, 结果类型: {type(result)}")
+                if task_id == "load_primary_data" and isinstance(result, dict):
+                    self.logger.info(f"  raw_data 将被设置为: {type(result.get('data', {}))}")
                 context.update(task_context_mapping[task_id])
             else:
                 # 对于未定义的任务，尝试通用更新
-                if "result_data" in result:
+                if isinstance(result, dict) and "result_data" in result:
                     context[f"{task_id}_result"] = result["result_data"]
+                elif isinstance(result, str):
+                    # 对于返回字符串的任务（如 save_local_report），直接存储结果
+                    context[f"{task_id}_result"] = result
             
             context["last_updated"] = time.strftime("%Y-%m-%d %H:%M:%S")
     

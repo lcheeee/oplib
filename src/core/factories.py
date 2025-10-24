@@ -80,11 +80,9 @@ class AlgorithmDrivenFactory:
         # 结果合并器
         try:
             from ..analysis.mergers.result_aggregator import ResultAggregator
-            from ..analysis.mergers.result_validator import ResultValidator
             from ..analysis.mergers.result_formatter import ResultFormatter
             
             self.register_result_merger("result_aggregator", ResultAggregator)
-            self.register_result_merger("result_validator", ResultValidator)
             self.register_result_merger("result_formatter", ResultFormatter)
         except ImportError:
             pass

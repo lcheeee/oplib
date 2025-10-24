@@ -30,7 +30,7 @@ specifications:
         
       - id: "soaking"
         description: "保温阶段 174℃至180℃保温阶段"
-        rules: ["curing_pressure_check_2", "soaking_temperature", "soaking_time"]
+        rules: ["curing_pressure_check_2", "soaking_temperature"]
 
       - id: "cooling"
         description: "降温阶段 180℃降至60℃降温阶段"
@@ -38,4 +38,4 @@ specifications:
     
       - id: "global"
         description: "全局检查"
-        rules: ["bag_pressure_check_2"]
+        rules: ["bag_pressure_check_2", "soaking_time"]

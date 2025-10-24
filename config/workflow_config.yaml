@@ -105,18 +105,13 @@ workflows:
               include_timeline: true
             depends_on: ["rule_execution", "quality_analysis"]
             
-          - id: "result_validation"
-            implementation: "result_validator"
-            algorithm: "consistency_check"
-            depends_on: ["result_aggregation"]
-            
           - id: "result_formatting"
             implementation: "result_formatter"
             algorithm: "standard_format"
             inputs:
               output_format: "json"
               include_metadata: true
-            depends_on: ["result_validation"]
+            depends_on: ["result_aggregation"]
 
       # 结果输出层
       - layer: "result_output"

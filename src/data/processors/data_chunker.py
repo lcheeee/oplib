@@ -154,30 +154,6 @@ class DataChunker(BaseDataProcessor):
         # 返回最接近的索引
         return left if left < len(timestamps) else len(timestamps) - 1
     
-    def _calculate_stage_features(self, sensor_data: Dict[str, Any], start: int, end: int, stage_config: Dict[str, Any] = None) -> Dict[str, Any]:
-        """计算阶段特征 - 基于时间配置的简化版本。"""
-        features = {}
-        
-        # 计算持续时间
-        sampling_interval = self.stages_config.get("sampling_interval", 0.1)
-        
-        # 使用阶段配置的时间单位，如果没有则使用全局时间单位
-        if stage_config and "time_range" in stage_config:
-            stage_time_unit = stage_config["time_range"].get("unit", "minutes")
-        else:
-            stage_time_unit = self.stages_config.get("time_unit", "minutes")
-        
-        # 计算持续时间（分钟）
-        features["duration"] = (end - start) * sampling_interval
-        features["duration_unit"] = "minutes"  # 统一使用分钟作为输出单位
-        
-        # 计算数据点数量
-        features["data_points"] = end - start
-        
-        # 记录原始时间单位信息
-        features["original_time_unit"] = stage_time_unit
-        
-        return features
     
     
     def _detect_stages_by_time(self, sensor_data: Dict[str, Any]) -> Dict[str, StageTimeline]:
@@ -319,14 +295,10 @@ class DataChunker(BaseDataProcessor):
                 if self.logger:
                     self.logger.warning(warning_msg)
             
-            # 计算阶段特征
-            stage_features = self._calculate_stage_features(sensor_data, start_index, end_index, stage_config)
-            
             # 添加阶段信息到字典
             detected_stages[stage_id] = {
                 "stage_id": stage_id,
-                "time_range": {"start": start_index, "end": end_index},
-                "features": stage_features
+                "time_range": {"start": start_index, "end": end_index}
             }
         
         # 如果有警告，添加到结果中
@@ -334,7 +306,7 @@ class DataChunker(BaseDataProcessor):
             detected_stages["_warnings"] = {
                 "stage": "_warnings",
                 "time_range": {"start": 0, "end": 0},
-                "features": {"warnings": warnings}
+                "warnings": warnings
             }
         
         return detected_stages

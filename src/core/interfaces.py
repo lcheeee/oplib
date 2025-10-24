@@ -8,8 +8,7 @@ from .exceptions import WorkflowError
 # 导入类型定义
 from .types import (
     DataSourceOutput, SensorGroupingOutput, StageDetectionOutput,
-    DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput,
-    ResultFormattingOutput
+    DataAnalysisOutput, ResultAggregationOutput, ResultFormattingOutput
 )
 from .base_logger import BaseLogger
 
@@ -108,7 +107,7 @@ class BaseResultMerger(BaseAlgorithmTask):
     """结果合并器基础接口。"""
     
     @abstractmethod
-    def merge(self, results: List[Union[DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput]], **kwargs: Any) -> Union[ResultAggregationOutput, ResultValidationOutput, ResultFormattingOutput]:
+    def merge(self, results: List[Union[DataAnalysisOutput, ResultAggregationOutput]], **kwargs: Any) -> Union[ResultAggregationOutput, ResultFormattingOutput]:
         """合并结果。"""
         pass
 

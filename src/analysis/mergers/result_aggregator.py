@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Union, Callable
 from ...core.interfaces import BaseResultMerger
-from ...core.types import DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput
+from ...core.types import DataAnalysisOutput, ResultAggregationOutput
 from ...core.exceptions import WorkflowError
 
 
@@ -27,7 +27,7 @@ class ResultAggregator(BaseResultMerger):
         # 兼容工作流配置中的命名
         self._register_algorithm("comprehensive_aggregator", self._simple_merge)
     
-    def merge(self, results: List[Union[DataAnalysisOutput, ResultAggregationOutput, ResultValidationOutput]], **kwargs: Any) -> ResultAggregationOutput:
+    def merge(self, results: List[Union[DataAnalysisOutput, ResultAggregationOutput]], **kwargs: Any) -> ResultAggregationOutput:
         """合并结果。"""
         from ...utils.logging_config import get_logger
         logger = get_logger()
@@ -87,9 +87,20 @@ class ResultAggregator(BaseResultMerger):
         # 首先处理规则分析结果
         for result in results:
             if isinstance(result, dict):
-                # 直接保留规则分析结果
-                if "rule_results" in result:
+                # 检查是否是规则结果（包含规则ID作为键）
+                if any(key.startswith(('bag_pressure_check_', 'curing_pressure_check_', 'thermocouples_check', 'heating_rate_phase_', 'soaking_', 'cooling_rate', 'thermocouple_cross_')) for key in result.keys()):
+                    # 这是规则结果，直接存储
+                    aggregated.update(result)
+                elif "rule_results" in result:
+                    # 这是包装的规则结果
                     aggregated["rule_results"] = result["rule_results"]
+                elif result.get("status") == "unimplemented" and result.get("component") == "SPC分析器":
+                    # 这是SPC分析结果（未实现）
+                    logger.info(f"  检测到SPC分析结果（未实现）: {result}")
+                    aggregated["quality_results"] = result
+                elif "quality_results" in result:
+                    # 这是包装的质量分析结果
+                    aggregated["quality_results"] = result["quality_results"]
                 if "analysis_info" in result:
                     aggregated["analysis_info"] = result["analysis_info"]
                 if "input_metadata" in result:
@@ -98,11 +109,12 @@ class ResultAggregator(BaseResultMerger):
         # 收集所有数值结果进行加权平均
         numeric_results = {}
         for i, result in enumerate(results):
-            for key, value in result.items():
-                if isinstance(value, (int, float)) and key not in ["rule_results", "analysis_info", "input_metadata"]:
-                    if key not in numeric_results:
-                        numeric_results[key] = []
-                    numeric_results[key].append(value)
+            if isinstance(result, dict):
+                for key, value in result.items():
+                    if isinstance(value, (int, float)) and key not in ["rule_results", "analysis_info", "input_metadata"]:
+                        if key not in numeric_results:
+                            numeric_results[key] = []
+                        numeric_results[key].append(value)
         
         # 计算加权平均
         for key, values in numeric_results.items():
@@ -119,26 +131,28 @@ class ResultAggregator(BaseResultMerger):
         """多数投票合并。"""
         aggregated = {}
         
-        # 收集所有分类结果
-        categorical_results = {}
+        # 首先处理规则分析结果
         for result in results:
-            for key, value in result.items():
-                if isinstance(value, str) and not value.replace('.', '').replace('-', '').isdigit():
-                    if key not in categorical_results:
-                        categorical_results[key] = []
-                    categorical_results[key].append(value)
-        
-        # 计算多数投票
-        for key, values in categorical_results.items():
-            if values:
-                # 统计每个值的出现次数
-                value_counts = {}
-                for value in values:
-                    value_counts[value] = value_counts.get(value, 0) + 1
-                
-                # 找到出现次数最多的值
-                most_common = max(value_counts.items(), key=lambda x: x[1])
-                aggregated[key] = most_common[0]
+            if isinstance(result, dict):
+                # 检查是否是规则结果（包含规则ID作为键）
+                if any(key.startswith(('bag_pressure_check_', 'curing_pressure_check_', 'thermocouples_check', 'heating_rate_phase_', 'soaking_', 'cooling_rate', 'thermocouple_cross_')) for key in result.keys()):
+                    # 这是规则结果，直接存储
+                    aggregated.update(result)
+                elif result.get("status") == "unimplemented" and result.get("component") == "SPC分析器":
+                    # 这是SPC分析结果（未实现）
+                    aggregated["quality_results"] = result
+                elif "quality_results" in result:
+                    # 这是包装的质量分析结果
+                    aggregated["quality_results"] = result["quality_results"]
+                else:
+                    # 其他结果，按原逻辑处理
+                    for key, value in result.items():
+                        if isinstance(value, str) and not value.replace('.', '').replace('-', '').isdigit():
+                            if key not in aggregated:
+                                aggregated[key] = []
+                            if not isinstance(aggregated[key], list):
+                                aggregated[key] = [aggregated[key]]
+                            aggregated[key].append(value)
         
         return aggregated
     
@@ -146,26 +160,28 @@ class ResultAggregator(BaseResultMerger):
         """共识合并。"""
         aggregated = {}
         
-        # 收集所有布尔结果
-        boolean_results = {}
+        # 首先处理规则分析结果
         for result in results:
-            for key, value in result.items():
-                if isinstance(value, bool):
-                    if key not in boolean_results:
-                        boolean_results[key] = []
-                    boolean_results[key].append(value)
-        
-        # 计算共识（所有值都相同时才为真）
-        for key, values in boolean_results.items():
-            if values:
-                # 检查是否所有值都相同
-                if all(v == values[0] for v in values):
-                    aggregated[key] = values[0]
+            if isinstance(result, dict):
+                # 检查是否是规则结果（包含规则ID作为键）
+                if any(key.startswith(('bag_pressure_check_', 'curing_pressure_check_', 'thermocouples_check', 'heating_rate_phase_', 'soaking_', 'cooling_rate', 'thermocouple_cross_')) for key in result.keys()):
+                    # 这是规则结果，直接存储
+                    aggregated.update(result)
+                elif result.get("status") == "unimplemented" and result.get("component") == "SPC分析器":
+                    # 这是SPC分析结果（未实现）
+                    aggregated["quality_results"] = result
+                elif "quality_results" in result:
+                    # 这是包装的质量分析结果
+                    aggregated["quality_results"] = result["quality_results"]
                 else:
-                    # 不一致，使用多数投票
-                    true_count = sum(1 for v in values if v)
-                    false_count = len(values) - true_count
-                    aggregated[key] = true_count > false_count
+                    # 其他结果，按原逻辑处理
+                    for key, value in result.items():
+                        if isinstance(value, bool):
+                            if key not in aggregated:
+                                aggregated[key] = []
+                            if not isinstance(aggregated[key], list):
+                                aggregated[key] = [aggregated[key]]
+                            aggregated[key].append(value)
         
         return aggregated
     
@@ -174,13 +190,29 @@ class ResultAggregator(BaseResultMerger):
         aggregated = {}
         
         # 简单地将所有结果合并
-        for result in results:
-            for key, value in result.items():
-                if key not in aggregated:
-                    aggregated[key] = []
-                if not isinstance(aggregated[key], list):
-                    aggregated[key] = [aggregated[key]]
-                aggregated[key].append(value)
+        for i, result in enumerate(results):
+            if isinstance(result, dict):
+                # 检查是否是规则结果（包含规则ID作为键）
+                if any(key.startswith(('bag_pressure_check_', 'curing_pressure_check_', 'thermocouples_check', 'heating_rate_phase_', 'soaking_', 'cooling_rate', 'thermocouple_cross_')) for key in result.keys()):
+                    # 这是规则结果，直接存储
+                    aggregated.update(result)
+                elif result.get("status") == "unimplemented" and result.get("component") == "SPC分析器":
+                    # 这是SPC分析结果（未实现）
+                    aggregated["quality_results"] = result
+                elif "quality_results" in result:
+                    # 这是包装的质量分析结果
+                    aggregated["quality_results"] = result["quality_results"]
+                else:
+                    # 其他结果，按原逻辑处理
+                    for key, value in result.items():
+                        if key not in aggregated:
+                            aggregated[key] = []
+                        if not isinstance(aggregated[key], list):
+                            aggregated[key] = [aggregated[key]]
+                        aggregated[key].append(value)
+            else:
+                # 对于非字典类型的结果，直接存储
+                aggregated[f"result_{i}"] = result
         
         return aggregated
     

@@ -141,6 +141,8 @@ class TaskExecutor:
     
     def _execute_data_analysis_task(self, task_def: TaskDefinition, context: WorkflowContext) -> Any:
         """执行数据分析任务。"""
+        self.logger.info(f"  数据分析任务: {task_def['implementation']}.{task_def['algorithm']}")
+        
         # 准备参数，包括配置管理器
         inputs = task_def['inputs'].copy()
         if self.config_manager:
@@ -160,12 +162,17 @@ class TaskExecutor:
             self.logger.info(f"  启用调试模式: {debug_mode}")
         
         # 创建数据分析器组件
-        analyzer = component_factory.create_data_analyzer(
-            task_def['implementation'],
-            task_def['algorithm'],
-            debug_mode=debug_mode,
-            **inputs
-        )
+        try:
+            analyzer = component_factory.create_data_analyzer(
+                task_def['implementation'],
+                task_def['algorithm'],
+                debug_mode=debug_mode,
+                **inputs
+            )
+            self.logger.info(f"  数据分析器创建成功: {type(analyzer).__name__}")
+        except Exception as e:
+            self.logger.error(f"  数据分析器创建失败: {e}")
+            raise
         
         # 执行数据分析 - 直接传递完整的上下文
         return analyzer.analyze(context)
@@ -179,11 +186,10 @@ class TaskExecutor:
             **task_def['inputs']
         )
         
-        # 准备合并数据
+        # 准备合并数据 - 只包含分析结果，不包含配置驱动的分组和分块结果
         results = [
-            context.get("raw_data", {}),
-            context.get("sensor_grouping"),
-            context.get("stage_timeline")
+            context.get("rule_results", {}),
+            context.get("quality_results", {})
         ]
         
         # 执行结果合并
@@ -198,11 +204,25 @@ class TaskExecutor:
             **task_def['inputs']
         )
         
-        # 准备输出数据
-        input_data = context.get("raw_data", {})
+        # 准备输出数据 - 优先使用格式化后的结果，如果没有则使用原始数据
+        input_data = context.get("formatted_results", context.get("raw_data", {}))
         
-        # 执行结果输出
-        return broker.broker(input_data)
+        # 准备上下文变量，用于路径模板解析
+        context_vars = {}
+        if 'process_id' in context:
+            context_vars['process_id'] = context['process_id']
+        if 'series_id' in context:
+            context_vars['series_id'] = context['series_id']
+        if 'calculation_date' in context:
+            context_vars['calculation_date'] = context['calculation_date']
+        
+        # 添加执行时间戳
+        import time
+        from datetime import datetime
+        context_vars['execution_time'] = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # 执行结果输出，传递上下文变量
+        return broker.broker(input_data, **context_vars)
     
     def _resolve_template_variables(self, inputs: Dict[str, Any], context: WorkflowContext) -> Dict[str, Any]:
         """解析模板变量。"""

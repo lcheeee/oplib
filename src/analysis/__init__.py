@@ -1,7 +1,7 @@
 """分析模块。"""
 
 from .analyzers import RuleEngineAnalyzer, SPCAnalyzer, FeatureExtractor, CNNPredictor, AnomalyDetector
-from .mergers import ResultAggregator, ResultValidator, ResultFormatter
+from .mergers import ResultAggregator, ResultFormatter
 
 __all__ = [
     "RuleEngineAnalyzer",
@@ -10,6 +10,5 @@ __all__ = [
     "CNNPredictor",
     "AnomalyDetector",
     "ResultAggregator",
-    "ResultValidator",
     "ResultFormatter"
 ]

@@ -65,7 +65,14 @@ class RuleEngineAnalyzer(BaseDataAnalyzer):
             # 2. 构建变量环境
             # 从 ProcessorResult 中提取 result_data
             calculation_data = calculation_result.get("result_data", {})
-            variables = {**data_context.get("raw_data", {}), **calculation_data}
+            
+            # 确保 raw_data 是字典类型
+            raw_data = data_context.get("raw_data", {})
+            if not isinstance(raw_data, dict):
+                self.logger.error(f"错误: raw_data 不是字典类型，而是 {type(raw_data)}: {raw_data}")
+                raw_data = {}
+            
+            variables = {**raw_data, **calculation_data}
             
             # 添加阶段时间线信息
             stage_timeline = data_context.get("stage_timeline", {})
