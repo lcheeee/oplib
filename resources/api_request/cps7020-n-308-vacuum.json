@@ -1,0 +1,158 @@
+{
+  "specification_id": "cps7020-n-308-vacuum",
+  "workflow_name": "curing_analysis",
+  "stages": {
+    "items": [
+      { "id": "pre_ventilation", "name": "通大气前阶段", "display_order": 1 },
+      { "id": "post_ventilation", "name": "通大气后阶段", "display_order": 2 },
+      { "id": "heating_phase", "name": "升温阶段", "display_order": 3 },
+      { "id": "soaking", "name": "保温阶段", "display_order": 4 },
+      { "id": "cooling", "name": "降温阶段", "display_order": 5 },
+      { "id": "global", "name": "全局检查", "display_order": 99 }
+    ]
+  },
+  "rule_inputs": [
+    {
+      "template_id": "initial_bag_pressure",
+      "rule_id": "bag_pressure_check_1",
+      "parameters": {
+        "calculation_id": "bag_pressure",
+        "threshold": -74,
+        "stage": "pre_ventilation"
+      }
+    },
+    {
+      "template_id": "global_bag_pressure",
+      "rule_id": "bag_pressure_check_2",
+      "parameters": {
+        "calculation_id": "bag_pressure",
+        "threshold": 34,
+        "stage": "global"
+      }
+    },
+    {
+      "template_id": "post_ventilation_pressure",
+      "rule_id": "curing_pressure_check_1",
+      "parameters": {
+        "calculation_id": "curing_pressure",
+        "threshold": 140,
+        "stage": "post_ventilation"
+      }
+    },
+    {
+      "template_id": "heating_pressure",
+      "rule_id": "curing_pressure_check_2",
+      "parameters": {
+        "calculation_id": "curing_pressure",
+        "min_value": 600,
+        "max_value": 650,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "cooling_pressure",
+      "rule_id": "curing_pressure_check_3",
+      "parameters": {
+        "calculation_id": "curing_pressure",
+        "min_value": 393,
+        "max_value": 650,
+        "stage": "cooling"
+      }
+    },
+    {
+      "template_id": "temperature_lower_bound",
+      "rule_id": "thermocouples_check",
+      "parameters": {
+        "calculation_id": "thermocouples",
+        "threshold": 55,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "soaking_temperature",
+      "rule_id": "soaking_temperature",
+      "parameters": {
+        "calculation_id": "thermocouples",
+        "min_temp": 174,
+        "max_temp": 186,
+        "stage": "soaking"
+      }
+    },
+    {
+      "template_id": "soaking_duration",
+      "rule_id": "soaking_time",
+      "parameters": {
+        "calculation_id": "soaking_duration",
+        "min_time": 120,
+        "max_time": 390,
+        "stage": "global"
+      }
+    },
+    {
+      "template_id": "heating_rate_stage",
+      "rule_id": "heating_rate_phase_1",
+      "parameters": {
+        "calculation_id": "heating_rate",
+        "temp_range": [55, 150],
+        "min_rate": 0.5,
+        "max_rate": 3.0,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "heating_rate_stage",
+      "rule_id": "heating_rate_phase_2",
+      "parameters": {
+        "calculation_id": "heating_rate",
+        "temp_range": [150, 165],
+        "min_rate": 0.15,
+        "max_rate": 3.0,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "heating_rate_stage",
+      "rule_id": "heating_rate_phase_3",
+      "parameters": {
+        "calculation_id": "heating_rate",
+        "temp_range": [165, 174],
+        "min_rate": 0.06,
+        "max_rate": 3.0,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "cooling_rate",
+      "rule_id": "cooling_rate",
+      "parameters": {
+        "calculation_id": "heating_rate",
+        "min_rate": -3,
+        "max_rate": 0,
+        "stage": "cooling"
+      }
+    },
+    {
+      "template_id": "cross_check_heating",
+      "rule_id": "thermocouple_cross_heating",
+      "parameters": {
+        "leading_id": "leading_thermocouples",
+        "lagging_id": "lagging_thermocouples",
+        "min_threshold": -5.6,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "cross_check_cooling",
+      "rule_id": "thermocouple_cross_cooling",
+      "parameters": {
+        "leading_id": "leading_thermocouples",
+        "lagging_id": "lagging_thermocouples",
+        "max_threshold": 5.6,
+        "stage": "cooling"
+      }
+    }
+  ],
+  "publish": true
+}
+
+

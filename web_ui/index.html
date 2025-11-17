@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPLib 工作流程管理</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>OPLib 工作流程管理</h1>
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="config">1. 配置生成</button>
+                <button class="tab-btn" data-tab="sensor">2. 传感器配置</button>
+                <button class="tab-btn" data-tab="workflow">3. 工作流执行</button>
+                <button class="tab-btn" data-tab="results">4. 结果查看</button>
+            </div>
+        </header>
+
+        <main>
+            <!-- 配置生成标签页 -->
+            <section id="config" class="tab-content active">
+                <h2>配置生成</h2>
+                <div class="form-group">
+                    <label>服务地址</label>
+                    <input type="text" id="config-api-url" value="http://localhost:8100" placeholder="http://localhost:8100">
+                </div>
+                <div class="form-group">
+                    <label>规范ID</label>
+                    <input type="text" id="specification-id" placeholder="cps7020-n-308-vacuum">
+                </div>
+                <div class="form-group">
+                    <label>工作流名称</label>
+                    <input type="text" id="workflow-name" value="curing_analysis" placeholder="curing_analysis">
+                </div>
+                <div class="form-group">
+                    <label>阶段配置（JSON）</label>
+                    <textarea id="stages-config" rows="10" placeholder='{"items": [{"id": "pre_ventilation", "name": "通大气前阶段", "display_order": 1, "type": "time", "time_range": {"start": "2022-11-03T13:07:21", "end": "2022-11-03T13:15:00"}, "unit": "datetime"}]}'></textarea>
+                </div>
+                <div class="form-group">
+                    <label>规则配置（JSON）</label>
+                    <textarea id="rules-config" rows="15" placeholder='[{"template_id": "initial_bag_pressure", "rule_id": "bag_pressure_check_1", "parameters": {"calculation_id": "bag_pressure", "threshold": -74, "stage": "pre_ventilation"}}]'></textarea>
+                </div>
+                <button class="btn-primary" id="generate-config-btn">生成配置</button>
+                <div id="config-result" class="result"></div>
+            </section>
+
+            <!-- 传感器配置标签页 -->
+            <section id="sensor" class="tab-content">
+                <h2>传感器配置</h2>
+                <div class="form-group">
+                    <label>服务地址</label>
+                    <input type="text" id="sensor-api-url" value="http://localhost:8000" placeholder="http://localhost:8000">
+                </div>
+                <div class="form-group">
+                    <label>工作流ID</label>
+                    <input type="text" id="workflow-id" value="curing_analysis_offline" placeholder="curing_analysis_offline">
+                </div>
+                <div class="form-group">
+                    <label>规范ID</label>
+                    <input type="text" id="sensor-spec-id" placeholder="cps7020-n-308-vacuum">
+                </div>
+                <div class="form-group">
+                    <label>传感器映射（JSON）</label>
+                    <textarea id="sensor-mapping" rows="8" placeholder='{"thermocouples": ["PTC10", "PTC11"], "pressure_sensors": ["PRESS"], "vacuum_sensors": ["VPRB1"]}'></textarea>
+                </div>
+                <div class="form-group">
+                    <label>数据源类型</label>
+                    <select id="data-source-type">
+                        <option value="offline">离线</option>
+                        <option value="online">在线</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>数据文件路径（离线模式）</label>
+                    <input type="text" id="data-file-path" value="resources/test_data_1.csv" placeholder="resources/test_data_1.csv">
+                </div>
+                <button class="btn-primary" id="configure-sensor-btn">保存配置</button>
+                <div id="sensor-result" class="result"></div>
+            </section>
+
+            <!-- 工作流执行标签页 -->
+            <section id="workflow" class="tab-content">
+                <h2>工作流执行</h2>
+                <div class="form-group">
+                    <label>服务地址</label>
+                    <input type="text" id="workflow-api-url" value="http://localhost:8000" placeholder="http://localhost:8000">
+                </div>
+                <div class="form-group">
+                    <label>工作流ID</label>
+                    <input type="text" id="run-workflow-id" value="curing_analysis_offline" placeholder="curing_analysis_offline">
+                </div>
+                <div class="form-group">
+                    <label>规范ID</label>
+                    <input type="text" id="run-spec-id" placeholder="cps7020-n-308-vacuum">
+                </div>
+                <div class="form-group">
+                    <label>流程ID（可选）</label>
+                    <input type="text" id="process-id" placeholder="process-20241103-001">
+                </div>
+                <div class="form-group">
+                    <label>系列ID（可选）</label>
+                    <input type="text" id="series-id" placeholder="CA00099852.4">
+                </div>
+                <div class="form-group">
+                    <label>计算日期（可选）</label>
+                    <input type="text" id="calculation-date" placeholder="20221103">
+                </div>
+                <button class="btn-primary" id="run-workflow-btn">执行工作流</button>
+                <div id="workflow-result" class="result"></div>
+            </section>
+
+            <!-- 结果查看标签页 -->
+            <section id="results" class="tab-content">
+                <h2>结果查看</h2>
+                <div class="form-group">
+                    <label>报告文件路径</label>
+                    <input type="text" id="report-path" placeholder="data_analyzer/reports/xxx_report.json">
+                </div>
+                <button class="btn-primary" id="load-report-btn">加载报告</button>
+                <button class="btn-secondary" id="list-reports-btn">列出所有报告</button>
+                <div id="reports-list" class="reports-list"></div>
+                <div id="report-content" class="result report-content"></div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/model.js"></script>
+    <script src="js/view.js"></script>
+    <script src="js/controller.js"></script>
+</body>
+</html>
+

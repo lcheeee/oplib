@@ -1,0 +1,7 @@
+version: v1
+specification_id: cps7020-n-308-vacuum
+calculations:
+- template: bag_pressure
+  sensors:
+  - pressure_sensors
+  - vacuum_sensors

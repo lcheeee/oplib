@@ -1,0 +1,586 @@
+version: v1
+process_type: curing
+description: 固化工艺工作流模板 - 定义各层可用的实现和算法
+
+# 工作流层级定义
+layers:
+  # 数据源层 - 获取原始数据
+  - layer: "data_source"
+    description: "数据源获取层 - 负责从各种来源读取原始传感器数据"
+    implementations:
+      - id: "csv"
+        name: "CSV文件数据源"
+        description: "从本地CSV文件读取数据（离线模式）"
+        algorithms:
+          - id: "local_csv_reader"
+            name: "本地CSV读取器"
+            description: "读取本地CSV文件"
+        required_inputs:
+          - name: "path"
+            type: "string"
+            description: "CSV文件路径（支持模板变量 {file_path}）"
+            example: "{file_path}"
+        optional_inputs:
+          - name: "encoding"
+            type: "string"
+            default: "utf-8"
+            description: "文件编码"
+          - name: "delimiter"
+            type: "string"
+            default: ","
+            description: "分隔符"
+        usage_scenarios:
+          - scenario: "offline"
+            description: "离线分析模式"
+            example:
+              implementation: "csv"
+              algorithm: "local_csv_reader"
+              inputs:
+                path: "{file_path}"
+      
+      - id: "kafka"
+        name: "Kafka数据源"
+        description: "从Kafka消息队列读取实时数据（在线IoT模式）"
+        algorithms:
+          - id: "kafka_consumer"
+            name: "Kafka消费者"
+            description: "从Kafka主题消费消息"
+        required_inputs:
+          - name: "topic"
+            type: "string"
+            description: "Kafka主题名称"
+            example: "sensor_data"
+        optional_inputs:
+          - name: "brokers"
+            type: "list"
+            description: "Kafka broker地址列表"
+            example: ["localhost:9092"]
+          - name: "group_id"
+            type: "string"
+            default: "oplib_consumer"
+            description: "消费者组ID"
+          - name: "timeout"
+            type: "integer"
+            default: 1000
+            description: "消费超时时间（毫秒）"
+          - name: "max_records"
+            type: "integer"
+            default: 1000
+            description: "最大消费记录数"
+        usage_scenarios:
+          - scenario: "online"
+            description: "在线实时数据模式"
+            example:
+              implementation: "kafka"
+              algorithm: "kafka_consumer"
+              inputs:
+                topic: "sensor_data"
+                brokers: ["kafka-broker-1:9092", "kafka-broker-2:9092"]
+                group_id: "curing_analysis_group"
+      
+      - id: "api"
+        name: "API数据源"
+        description: "通过HTTP API获取数据（在线IoT模式）"
+        algorithms:
+          - id: "api_request"
+            name: "API请求器"
+            description: "发送HTTP请求获取数据"
+        required_inputs:
+          - name: "url"
+            type: "string"
+            description: "API端点URL"
+            example: "https://api.example.com/sensor-data"
+        optional_inputs:
+          - name: "method"
+            type: "string"
+            default: "GET"
+            description: "HTTP方法"
+          - name: "headers"
+            type: "dict"
+            description: "请求头"
+            example: {"Authorization": "Bearer token"}
+          - name: "params"
+            type: "dict"
+            description: "请求参数"
+          - name: "timeout"
+            type: "integer"
+            default: 30
+            description: "请求超时时间（秒）"
+        usage_scenarios:
+          - scenario: "online"
+            description: "在线API数据模式"
+            example:
+              implementation: "api"
+              algorithm: "api_request"
+              inputs:
+                url: "https://iot-platform.example.com/api/v1/sensors/data"
+                method: "GET"
+                headers:
+                  Authorization: "Bearer your-api-token"
+                params:
+                  sensor_ids: ["PTC10", "PTC11", "PRESS1"]
+      
+      - id: "database"
+        name: "数据库数据源"
+        description: "从数据库读取数据"
+        algorithms:
+          - id: "database_query"
+            name: "数据库查询"
+            description: "执行SQL查询获取数据"
+        required_inputs:
+          - name: "connection_string"
+            type: "string"
+            description: "数据库连接字符串"
+          - name: "query"
+            type: "string"
+            description: "SQL查询语句"
+        optional_inputs:
+          - name: "timeout"
+            type: "integer"
+            default: 30
+            description: "查询超时时间（秒）"
+
+  # 数据处理层 - 数据预处理和转换
+  - layer: "data_processing"
+    description: "数据处理层 - 负责数据预处理、分组、阶段识别等"
+    implementations:
+      - id: "data_grouper"
+        name: "数据分组器"
+        description: "将传感器数据按传感器组进行分组"
+        algorithms:
+          - id: "sensor_grouper"
+            name: "传感器分组"
+            description: "根据传感器组配置进行分组"
+        required_inputs: []
+        optional_inputs:
+          - name: "sensor_groups"
+            type: "dict"
+            description: "传感器组配置（通常从sensor_groups.yaml加载）"
+        usage_scenarios:
+          - scenario: "common"
+            description: "所有模式都需要"
+            example:
+              implementation: "data_grouper"
+              algorithm: "sensor_grouper"
+              depends_on: ["load_primary_data"]
+      
+      - id: "data_chunker"
+        name: "数据分块器"
+        description: "将数据按阶段进行分块"
+        algorithms:
+          - id: "detect_stage_by_time"
+            name: "基于时间阶段检测"
+            description: "根据时间序列检测工艺阶段"
+        required_inputs: []
+        optional_inputs:
+          - name: "stage_config"
+            type: "dict"
+            description: "阶段配置（通常从stages.yaml加载）"
+        usage_scenarios:
+          - scenario: "common"
+            description: "所有模式都需要"
+            example:
+              implementation: "data_chunker"
+              algorithm: "detect_stage_by_time"
+              depends_on: ["sensor_grouping"]
+
+  # 规范绑定层 - 将规范配置与数据绑定
+  - layer: "spec_binding"
+    description: "规范绑定层 - 将阶段、传感器组与规则绑定"
+    implementations:
+      - id: "spec_binding_processor"
+        name: "规范绑定处理器"
+        description: "将规范配置与运行时数据绑定"
+        algorithms:
+          - id: "rule_planner"
+            name: "规则计划器"
+            description: "根据阶段和传感器组生成规则执行计划"
+        required_inputs: []
+        optional_inputs:
+          - name: "specification_id"
+            type: "string"
+            description: "规范ID"
+        usage_scenarios:
+          - scenario: "common"
+            description: "所有模式都需要"
+            example:
+              implementation: "spec_binding_processor"
+              algorithm: "rule_planner"
+              depends_on: ["stage_detection"]
+
+  # 数据分析层 - 执行规则和分析
+  - layer: "data_analysis"
+    description: "数据分析层 - 执行规则引擎、SPC分析等"
+    implementations:
+      - id: "rule_engine_analyzer"
+        name: "规则引擎分析器"
+        description: "执行规则验证和分析"
+        algorithms:
+          - id: "rule_engine"
+            name: "规则引擎"
+            description: "执行规则验证"
+        required_inputs: []
+        optional_inputs:
+          - name: "debug_mode"
+            type: "boolean"
+            default: false
+            description: "是否启用调试模式（输出中间结果）"
+        usage_scenarios:
+          - scenario: "common"
+            description: "所有模式都需要"
+            example:
+              implementation: "rule_engine_analyzer"
+              algorithm: "rule_engine"
+              inputs:
+                debug_mode: true
+              depends_on: ["spec_binding"]
+      
+      - id: "spc_analyzer"
+        name: "SPC分析器"
+        description: "统计过程控制分析"
+        algorithms:
+          - id: "statistical_process_control"
+            name: "统计过程控制"
+            description: "执行SPC分析"
+        required_inputs: []
+        optional_inputs:
+          - name: "control_limits"
+            type: "boolean"
+            default: true
+            description: "是否计算控制限"
+          - name: "trend_analysis"
+            type: "boolean"
+            default: true
+            description: "是否进行趋势分析"
+        usage_scenarios:
+          - scenario: "optional"
+            description: "可选的质量分析"
+            example:
+              implementation: "spc_analyzer"
+              algorithm: "statistical_process_control"
+              inputs:
+                control_limits: true
+                trend_analysis: true
+              depends_on: ["rule_execution"]
+
+  # 结果合并层 - 合并分析结果
+  - layer: "result_merging"
+    description: "结果合并层 - 合并和格式化分析结果"
+    implementations:
+      - id: "result_aggregator"
+        name: "结果聚合器"
+        description: "聚合多个分析结果"
+        algorithms:
+          - id: "comprehensive_aggregator"
+            name: "综合聚合器"
+            description: "综合聚合所有分析结果"
+        required_inputs: []
+        optional_inputs:
+          - name: "include_metadata"
+            type: "boolean"
+            default: true
+            description: "是否包含元数据"
+          - name: "include_timeline"
+            type: "boolean"
+            default: true
+            description: "是否包含时间线"
+        usage_scenarios:
+          - scenario: "common"
+            description: "所有模式都需要"
+            example:
+              implementation: "result_aggregator"
+              algorithm: "comprehensive_aggregator"
+              inputs:
+                include_metadata: true
+                include_timeline: true
+              depends_on: ["rule_execution", "quality_analysis"]
+      
+      - id: "result_formatter"
+        name: "结果格式化器"
+        description: "格式化输出结果"
+        algorithms:
+          - id: "standard_format"
+            name: "标准格式"
+            description: "标准JSON格式输出"
+        required_inputs: []
+        optional_inputs:
+          - name: "output_format"
+            type: "string"
+            default: "json"
+            description: "输出格式（json/xml/csv）"
+          - name: "include_metadata"
+            type: "boolean"
+            default: true
+            description: "是否包含元数据"
+        usage_scenarios:
+          - scenario: "common"
+            description: "所有模式都需要"
+            example:
+              implementation: "result_formatter"
+              algorithm: "standard_format"
+              inputs:
+                output_format: "json"
+                include_metadata: true
+              depends_on: ["result_aggregation"]
+
+  # 结果输出层 - 输出结果
+  - layer: "result_output"
+    description: "结果输出层 - 将结果输出到文件、数据库等"
+    implementations:
+      - id: "file_writer"
+        name: "文件写入器"
+        description: "将结果写入文件"
+        algorithms:
+          - id: "json_writer"
+            name: "JSON写入器"
+            description: "以JSON格式写入文件"
+        required_inputs:
+          - name: "path"
+            type: "string"
+            description: "输出文件路径（支持模板变量）"
+            example: "reports/{process_id}_{execution_time}_report.json"
+        optional_inputs:
+          - name: "format"
+            type: "string"
+            default: "json"
+            description: "文件格式"
+        usage_scenarios:
+          - scenario: "common"
+            description: "所有模式都需要"
+            example:
+              implementation: "file_writer"
+              algorithm: "json_writer"
+              inputs:
+                path: "reports/{process_id}_{execution_time}_report.json"
+                format: "json"
+              depends_on: ["result_formatting"]
+      
+      - id: "kafka_writer"
+        name: "Kafka写入器"
+        description: "将结果发送到Kafka主题"
+        algorithms:
+          - id: "kafka_producer"
+            name: "Kafka生产者"
+            description: "发送消息到Kafka"
+        required_inputs:
+          - name: "topic"
+            type: "string"
+            description: "Kafka主题名称"
+        optional_inputs:
+          - name: "brokers"
+            type: "list"
+            description: "Kafka broker地址列表"
+      
+      - id: "database_writer"
+        name: "数据库写入器"
+        description: "将结果写入数据库"
+        algorithms:
+          - id: "database_insert"
+            name: "数据库插入"
+            description: "插入数据到数据库表"
+        required_inputs:
+          - name: "connection_string"
+            type: "string"
+            description: "数据库连接字符串"
+          - name: "table"
+            type: "string"
+            description: "目标表名"
+
+# 工作流模板示例
+workflow_templates:
+  # 离线模式工作流模板
+  - id: "curing_analysis_offline"
+    name: "固化工艺分析（离线）"
+    description: "基于CSV文件的离线分析工作流"
+    mode: "offline"
+    layers:
+      - layer: "data_source"
+        tasks:
+          - id: "load_primary_data"
+            implementation: "csv"
+            algorithm: "local_csv_reader"
+            inputs:
+              path: "{file_path}"
+            depends_on: []
+      
+      - layer: "data_processing"
+        tasks:
+          - id: "sensor_grouping"
+            implementation: "data_grouper"
+            algorithm: "sensor_grouper"
+            depends_on: ["load_primary_data"]
+          
+          - id: "stage_detection"
+            implementation: "data_chunker"
+            algorithm: "detect_stage_by_time"
+            depends_on: ["sensor_grouping"]
+      
+      - layer: "spec_binding"
+        tasks:
+          - id: "spec_binding"
+            implementation: "spec_binding_processor"
+            algorithm: "rule_planner"
+            depends_on: ["stage_detection"]
+      
+      - layer: "data_analysis"
+        tasks:
+          - id: "rule_execution"
+            implementation: "rule_engine_analyzer"
+            algorithm: "rule_engine"
+            inputs:
+              debug_mode: true
+            depends_on: ["spec_binding"]
+          
+          - id: "quality_analysis"
+            implementation: "spc_analyzer"
+            algorithm: "statistical_process_control"
+            inputs:
+              control_limits: true
+              trend_analysis: true
+            depends_on: ["rule_execution"]
+      
+      - layer: "result_merging"
+        tasks:
+          - id: "result_aggregation"
+            implementation: "result_aggregator"
+            algorithm: "comprehensive_aggregator"
+            inputs:
+              include_metadata: true
+              include_timeline: true
+            depends_on: ["rule_execution", "quality_analysis"]
+          
+          - id: "result_formatting"
+            implementation: "result_formatter"
+            algorithm: "standard_format"
+            inputs:
+              output_format: "json"
+              include_metadata: true
+            depends_on: ["result_aggregation"]
+      
+      - layer: "result_output"
+        tasks:
+          - id: "save_local_report"
+            implementation: "file_writer"
+            algorithm: "json_writer"
+            inputs:
+              path: "reports/{process_id}_{execution_time}_report.json"
+              format: "json"
+            depends_on: ["result_formatting"]
+  
+  # 在线模式工作流模板（IoT数据源）
+  - id: "curing_analysis_online"
+    name: "固化工艺分析（在线）"
+    description: "基于IoT平台实时数据的在线分析工作流"
+    mode: "online"
+    layers:
+      - layer: "data_source"
+        tasks:
+          # 使用Kafka作为IoT数据源
+          - id: "load_primary_data"
+            implementation: "kafka"
+            algorithm: "kafka_consumer"
+            inputs:
+              topic: "sensor_data"
+              brokers: ["kafka-broker-1:9092", "kafka-broker-2:9092"]
+              group_id: "curing_analysis_group"
+              timeout: 1000
+              max_records: 1000
+            depends_on: []
+          # 注意：IoT数据源配置说明
+          # - 如果使用Kafka，需要配置brokers和topic
+          # - 如果使用API，需要配置url、headers（认证）等
+          # - 传感器组名称在sensor_groups.yaml中定义，运行时通过/api/sensor/config绑定实际传感器
+      
+      - layer: "data_processing"
+        tasks:
+          - id: "sensor_grouping"
+            implementation: "data_grouper"
+            algorithm: "sensor_grouper"
+            # 注意：传感器组配置会从运行时传感器配置加载
+            depends_on: ["load_primary_data"]
+          
+          - id: "stage_detection"
+            implementation: "data_chunker"
+            algorithm: "detect_stage_by_time"
+            depends_on: ["sensor_grouping"]
+      
+      - layer: "spec_binding"
+        tasks:
+          - id: "spec_binding"
+            implementation: "spec_binding_processor"
+            algorithm: "rule_planner"
+            depends_on: ["stage_detection"]
+      
+      - layer: "data_analysis"
+        tasks:
+          - id: "rule_execution"
+            implementation: "rule_engine_analyzer"
+            algorithm: "rule_engine"
+            inputs:
+              debug_mode: true
+            depends_on: ["spec_binding"]
+      
+      - layer: "result_merging"
+        tasks:
+          - id: "result_aggregation"
+            implementation: "result_aggregator"
+            algorithm: "comprehensive_aggregator"
+            inputs:
+              include_metadata: true
+              include_timeline: true
+            depends_on: ["rule_execution"]
+          
+          - id: "result_formatting"
+            implementation: "result_formatter"
+            algorithm: "standard_format"
+            inputs:
+              output_format: "json"
+              include_metadata: true
+            depends_on: ["result_aggregation"]
+      
+      - layer: "result_output"
+        tasks:
+          # 在线模式可以输出到Kafka或数据库
+          - id: "save_to_kafka"
+            implementation: "kafka_writer"
+            algorithm: "kafka_producer"
+            inputs:
+              topic: "analysis_results"
+              brokers: ["kafka-broker-1:9092", "kafka-broker-2:9092"]
+            depends_on: ["result_formatting"]
+          
+          # 也可以同时保存到本地文件（可选）
+          - id: "save_local_report"
+            implementation: "file_writer"
+            algorithm: "json_writer"
+            inputs:
+              path: "reports/{process_id}_{execution_time}_report.json"
+              format: "json"
+            depends_on: ["result_formatting"]
+
+# 配置说明
+configuration_notes:
+  offline_mode:
+    description: "离线模式配置要点"
+    data_source:
+      - "使用csv实现，配置path参数指向CSV文件"
+      - "path支持模板变量{file_path}，运行时从请求参数传入"
+      - "文件路径可以是相对路径（相对于base_dir）或绝对路径"
+    sensor_configuration:
+      - "传感器组名称在sensor_groups.yaml中定义（模板级别）"
+      - "实际传感器名称通过/api/sensor/config接口配置（运行时）"
+      - "离线模式可在配置时指定data_source.file_path"
+  
+  online_mode:
+    description: "在线模式配置要点"
+    data_source:
+      - "使用kafka或api实现，配置连接信息"
+      - "Kafka需要配置：topic、brokers、group_id"
+      - "API需要配置：url、headers（认证）、method"
+      - "传感器组名称在sensor_groups.yaml中定义（模板级别）"
+      - "实际传感器名称通过/api/sensor/config接口配置（运行时）"
+      - "IoT数据源需要确保传感器组与实际数据源的列名匹配"
+    sensor_configuration:
+      - "在线模式必须在运行前通过/api/sensor/config配置传感器映射"
+      - "传感器组名称来自规范模板，实际传感器名称来自IoT平台"
+

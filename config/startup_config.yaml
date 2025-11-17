@@ -1,18 +1,14 @@
 # OPLib 启动配置文件
 version: v2
 
-# 统一配置文件路径
+# 统一配置文件路径（只保留固定的配置）
 config_files:
   workflow_config: "config/workflow_config.yaml"
-  sensor_groups: "config/sensor_groups.yaml"
-  calculations: "config/calculations.yaml"
-  process_rules: "config/process_rules.yaml"
-  process_stages: "config/process_stages_by_time.yaml"
-  process_specification: "config/process_specification.yaml"
+  # 删除 sensor_groups 和 process_stages（应该是动态输入，存储在Redis中）
 
 # 启动参数
 startup:
-  base_dir: "."
+  base_dir: "/home/lenovo/tiansuo_oplib"
   debug: true
   host: "0.0.0.0"
   port: 8000

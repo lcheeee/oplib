@@ -1,0 +1,56 @@
+version: v1
+process_type: curing
+description: 固化工艺传感器组模板 - 定义传感器组名称和类型
+
+sensor_groups:
+  # 温度传感器组
+  - id: "thermocouples"
+    name: "热电偶"
+    description: "所有热电偶传感器"
+    type: "temperature"
+    unit: "°C"
+    required: true
+    min_count: 1  # 至少需要1个传感器
+    
+  - id: "leading_thermocouples"
+    name: "前导热电偶"
+    description: "升温较快的热电偶"
+    type: "temperature"
+    unit: "°C"
+    required: true
+    min_count: 1
+    
+  - id: "lagging_thermocouples"
+    name: "滞后热电偶"
+    description: "升温较慢的热电偶"
+    type: "temperature"
+    unit: "°C"
+    required: true
+    min_count: 1
+    
+  # 压力传感器组
+  - id: "vacuum_sensors"
+    name: "真空传感器"
+    description: "袋内真空度传感器"
+    type: "pressure"
+    unit: "kPa"
+    required: true
+    min_count: 1
+    
+  - id: "pressure_sensors"
+    name: "压力传感器"
+    description: "罐压传感器"
+    type: "pressure"
+    unit: "kPa"
+    required: true
+    min_count: 1
+    
+  # 时间戳（可选）
+  - id: "timestamps"
+    name: "时间戳"
+    description: "数据时间戳列"
+    type: "timestamp"
+    unit: "datetime"
+    required: false
+    min_count: 1
+

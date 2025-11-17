@@ -1,0 +1,84 @@
+version: v1
+process_type: curing
+description: 固化工艺计算项模板 - 定义计算逻辑，使用传感器组名称占位符
+
+templates:
+  # 温度相关计算项模板
+  - id: "thermocouples_avg"
+    type: "calculated"
+    formula: "avg({thermocouples})"
+    sensors: ["{thermocouples}"]
+    description: "热电偶平均温度"
+    parameters:
+      unit: "°C"
+    
+  - id: "heating_rate"
+    type: "calculated"
+    formula: "rate({thermocouples}, step={step})"
+    sensors: ["{thermocouples}"]
+    parameters:
+      step: 1  # 算法参数，不随规范变化
+    description: "升温速率"
+    
+  - id: "cooling_rate"
+    type: "calculated"
+    formula: "rate({thermocouples}, step={step})"
+    sensors: ["{thermocouples}"]
+    parameters:
+      step: 1  # 算法参数，不随规范变化
+    description: "降温速率"
+    
+  - id: "leading_thermocouples_avg"
+    type: "calculated"
+    formula: "avg({leading_thermocouples})"
+    sensors: ["{leading_thermocouples}"]
+    description: "前导热电偶平均温度"
+    parameters:
+      unit: "°C"
+    
+  - id: "lagging_thermocouples_avg"
+    type: "calculated"
+    formula: "avg({lagging_thermocouples})"
+    sensors: ["{lagging_thermocouples}"]
+    description: "滞后热电偶平均温度"
+    parameters:
+      unit: "°C"
+    
+  # 压力相关计算项模板
+  - id: "bag_pressure"
+    type: "calculated"
+    formula: "{vacuum_sensors} - {pressure_sensors}"
+    sensors: ["{vacuum_sensors}", "{pressure_sensors}"]
+    description: "袋内压"
+    parameters:
+      unit: "kPa"
+    
+  - id: "curing_pressure"
+    type: "calculated"
+    formula: "avg({pressure_sensors})"
+    sensors: ["{pressure_sensors}"]
+    description: "罐压"
+    parameters:
+      unit: "kPa"
+    
+  # 时间相关计算项模板
+  - id: "soaking_duration"
+    type: "calculated"
+    formula: "intervals(all({thermocouples} >= {min_temp}, {thermocouples} <= {max_temp}, axis=1), timestamps)"
+    sensors: ["{thermocouples}", "timestamps"]
+    parameters:
+      min_temp: "{min_temp}"  # 占位符，规范中填入
+      max_temp: "{max_temp}"  # 占位符，规范中填入
+    description: "保温持续时间"
+    parameters:
+      unit: "min"
+    
+  # 热电偶交叉检查计算项模板
+  - id: "thermocouple_cross"
+    type: "calculated"
+    formula: "max({leading_thermocouples}) - min({lagging_thermocouples})"
+    sensors: ["{leading_thermocouples}", "{lagging_thermocouples}"]
+    description: "前导与滞后热电偶温差（升温时：领先-滞后，降温时：滞后-领先）"
+    parameters:
+      unit: "°C"
+

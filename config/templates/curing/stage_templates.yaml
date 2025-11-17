@@ -1,0 +1,61 @@
+version: v1
+process_type: curing
+description: 固化工艺阶段识别模板 - 定义阶段识别逻辑
+
+templates:
+  # 基于规则触发的阶段识别模板
+  - id: "pre_ventilation_stage"
+    type: "rule"
+    name: "通大气前阶段"
+    description: "袋内压通大气前的阶段"
+    trigger_rule: "{rule_id}"  # 占位符，规范中填入触发规则ID
+    display_order: 1
+    
+  - id: "ventilation_stage"
+    type: "rule"
+    name: "通大气阶段"
+    description: "袋内压通大气的阶段"
+    trigger_rule: "{rule_id}"  # 占位符，规范中填入触发规则ID
+    display_order: 2
+    
+  - id: "heating_phase_stage"
+    type: "rule"
+    name: "升温阶段"
+    description: "热电偶开始升温到进入保温的阶段"
+    trigger_rule: "{rule_id}"  # 占位符，规范中填入触发规则ID
+    display_order: 3
+    
+  - id: "soaking_stage"
+    type: "rule"
+    name: "保温阶段"
+    description: "热电偶在保温温度范围内的阶段"
+    trigger_rule: "{rule_id}"  # 占位符，规范中填入触发规则ID
+    display_order: 4
+    
+  - id: "cooling_stage"
+    type: "rule"
+    name: "降温阶段"
+    description: "热电偶从保温结束到泄压开罐的阶段"
+    trigger_rule: "{rule_id}"  # 占位符，规范中填入触发规则ID
+    display_order: 5
+    
+  # 基于温度范围的阶段识别模板
+  - id: "temperature_range_stage"
+    type: "temperature"
+    name: "{stage_name}"  # 占位符，规范中填入阶段名称
+    description: "基于温度范围的阶段识别"
+    temperature_range:
+      min_temp: "{min_temp}"  # 占位符，规范中填入
+      max_temp: "{max_temp}"  # 占位符，规范中填入
+    display_order: "{display_order}"  # 占位符，规范中填入
+    
+  # 基于时间的阶段识别模板
+  - id: "time_based_stage"
+    type: "time"
+    name: "{stage_name}"  # 占位符，规范中填入阶段名称
+    description: "基于时间范围的阶段识别"
+    time_range:
+      start: "{start_time}"  # 占位符，规范中填入
+      end: "{end_time}"       # 占位符，规范中填入
+    display_order: "{display_order}"  # 占位符，规范中填入
+

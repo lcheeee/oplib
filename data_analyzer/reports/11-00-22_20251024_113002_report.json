@@ -1,0 +1,113 @@
+{
+  "analysis_summary": {
+    "total_results": 2,
+    "status": "completed"
+  },
+  "results": [
+    {
+      "rule_compliance": {
+        "total_rules": 14,
+        "passed_rules": 7,
+        "failed_rules": 7,
+        "rules": {
+          "bag_pressure_check_1": {
+            "rule_name": "通大气前阶段袋内压检查。袋内压(kPa)≤-74kPa",
+            "passed": true,
+            "execution_time": 1.8596649169921875e-05
+          },
+          "bag_pressure_check_2": {
+            "rule_name": "全局袋内压检查。袋内压(kPa)≤34kPa",
+            "passed": true,
+            "execution_time": 7.367134094238281e-05
+          },
+          "curing_pressure_check_1": {
+            "rule_name": "通大气后阶段罐压检查。首个罐压(kPa)≥140kPa",
+            "passed": false,
+            "execution_time": 5.364418029785156e-05
+          },
+          "curing_pressure_check_2": {
+            "rule_name": "加热至保温结束固化压力检查。压力应在600-650kPa范围内",
+            "passed": false,
+            "execution_time": 4.4345855712890625e-05
+          },
+          "curing_pressure_check_3": {
+            "rule_name": "降温阶段固化压力检查。压力应在600-650kPa范围内",
+            "passed": false,
+            "execution_time": 7.677078247070312e-05
+          },
+          "thermocouples_check": {
+            "rule_name": "罐压下限时温度检查。罐压下限时温度应小于55℃",
+            "passed": false,
+            "execution_time": 2.3126602172851562e-05
+          },
+          "heating_rate_phase_1": {
+            "rule_name": "升温阶段1速率检查。55℃至150℃升温速率应在0.5-3℃/min范围内",
+            "passed": true,
+            "execution_time": 3.695487976074219e-05
+          },
+          "heating_rate_phase_2": {
+            "rule_name": "升温阶段2速率检查。150℃至165℃升温速率应在0.15-3℃/min范围内",
+            "passed": true,
+            "execution_time": 3.409385681152344e-05
+          },
+          "heating_rate_phase_3": {
+            "rule_name": "升温阶段3速率检查。165℃至174℃升温速率应在0.06-3℃/min范围内",
+            "passed": true,
+            "execution_time": 2.9802322387695312e-05
+          },
+          "soaking_temperature": {
+            "rule_name": "保温温度检查。保温温度应在174-186℃范围内",
+            "passed": true,
+            "execution_time": 4.601478576660156e-05
+          },
+          "soaking_time": {
+            "rule_name": "保温时间检查。保温时间应在120-999分钟范围内",
+            "passed": true,
+            "execution_time": 2.5510787963867188e-05
+          },
+          "cooling_rate": {
+            "rule_name": "降温速率检查。降温速率应在0-3℃/min范围内",
+            "passed": false,
+            "execution_time": 9.942054748535156e-05
+          },
+          "thermocouple_cross_heating": {
+            "rule_name": "升温阶段热电偶交叉检查。升温阶段领先偶与滞后偶温差应≥-5.6℃",
+            "passed": false,
+            "execution_time": 1.9311904907226562e-05
+          },
+          "thermocouple_cross_cooling": {
+            "rule_name": "降温阶段热电偶交叉检查。降温阶段领先偶与滞后偶温差应≤5.6℃",
+            "passed": false,
+            "execution_time": 1.9550323486328125e-05
+          }
+        }
+      }
+    },
+    {
+      "status": "unimplemented",
+      "message": "SPC分析器尚未实现",
+      "component": "SPC分析器",
+      "result_type": "DataAnalysisOutput",
+      "analysis_info": {
+        "algorithm": "statistical_process_control",
+        "implementation_status": "not_implemented",
+        "note": "此组件功能尚未实现，返回占位结果以保持工作流连续性"
+      },
+      "input_metadata": {},
+      "output_metadata": {
+        "placeholder": true,
+        "created_at": "workflow_execution"
+      }
+    }
+  ],
+  "metadata": {
+    "format_version": "1.0",
+    "generated_by": "OPLib",
+    "algorithm": "standard_format",
+    "timing": {
+      "request_time": "2025-10-24T11:30:02.004217",
+      "execution_time": "2025-10-24T11:30:02.004220",
+      "generation_time": "2025-10-24T11:30:02.004222"
+    }
+  }
+}

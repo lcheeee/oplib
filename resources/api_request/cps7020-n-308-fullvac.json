@@ -1,0 +1,181 @@
+{
+  "specification_id": "cps7020-n-308-fullvac",
+  "workflow_name": "curing_analysis",
+  "stages": {
+    "items": [
+      { "id": "heating_phase", "name": "升温阶段", "display_order": 1 },
+      { "id": "soaking", "name": "保温阶段", "display_order": 2 },
+      { "id": "cooling", "name": "降温阶段", "display_order": 3 },
+      { "id": "global", "name": "全局检查", "display_order": 99 }
+    ]
+  },
+  "rule_inputs": [
+    {
+      "template_id": "initial_bag_pressure",
+      "rule_id": "bag_pressure_initial_fullvac",
+      "parameters": {
+        "calculation_id": "bag_pressure",
+        "threshold": -74,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "heating_pressure",
+      "rule_id": "curing_pressure_heating_fullvac",
+      "parameters": {
+        "calculation_id": "curing_pressure",
+        "min_value": 600,
+        "max_value": 650,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "cooling_pressure",
+      "rule_id": "curing_pressure_cooling_fullvac",
+      "parameters": {
+        "calculation_id": "curing_pressure",
+        "min_value": 393,
+        "max_value": 650,
+        "stage": "cooling"
+      }
+    },
+    {
+      "template_id": "soaking_temperature",
+      "rule_id": "soaking_temperature_fullvac",
+      "parameters": {
+        "calculation_id": "thermocouples",
+        "min_temp": 174,
+        "max_temp": 186,
+        "stage": "soaking"
+      }
+    },
+    {
+      "template_id": "soaking_duration",
+      "rule_id": "soaking_time_fullvac_low_stage",
+      "parameters": {
+        "calculation_id": "soaking_duration",
+        "min_time": 30,
+        "max_time": 300,
+        "stage": "soaking"
+      }
+    },
+    {
+      "template_id": "soaking_duration",
+      "rule_id": "soaking_time_fullvac_high_stage",
+      "parameters": {
+        "calculation_id": "soaking_duration",
+        "min_time": 120,
+        "max_time": 390,
+        "stage": "soaking"
+      }
+    },
+    {
+      "template_id": "heating_rate_stage",
+      "rule_id": "heating_rate_fullvac_1",
+      "parameters": {
+        "calculation_id": "heating_rate",
+        "temp_range": [55, 70],
+        "min_rate": 0.25,
+        "max_rate": 3.0,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "heating_rate_stage",
+      "rule_id": "heating_rate_fullvac_2",
+      "parameters": {
+        "calculation_id": "heating_rate",
+        "temp_range": [70, 85],
+        "min_rate": 0.15,
+        "max_rate": 3.0,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "heating_rate_stage",
+      "rule_id": "heating_rate_fullvac_3",
+      "parameters": {
+        "calculation_id": "heating_rate",
+        "temp_range": [85, 94],
+        "min_rate": 0.06,
+        "max_rate": 3.0,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "heating_rate_stage",
+      "rule_id": "heating_rate_fullvac_4",
+      "parameters": {
+        "calculation_id": "heating_rate",
+        "temp_range": [106, 150],
+        "min_rate": 0.25,
+        "max_rate": 3.0,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "heating_rate_stage",
+      "rule_id": "heating_rate_fullvac_5",
+      "parameters": {
+        "calculation_id": "heating_rate",
+        "temp_range": [150, 165],
+        "min_rate": 0.15,
+        "max_rate": 3.0,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "heating_rate_stage",
+      "rule_id": "heating_rate_fullvac_6",
+      "parameters": {
+        "calculation_id": "heating_rate",
+        "temp_range": [165, 174],
+        "min_rate": 0.06,
+        "max_rate": 3.0,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "cooling_rate",
+      "rule_id": "cooling_rate_fullvac",
+      "parameters": {
+        "calculation_id": "heating_rate",
+        "min_rate": -3,
+        "max_rate": 0,
+        "stage": "cooling"
+      }
+    },
+    {
+      "template_id": "cross_check_heating",
+      "rule_id": "thermocouple_cross_heating_fullvac",
+      "parameters": {
+        "leading_id": "leading_thermocouples",
+        "lagging_id": "lagging_thermocouples",
+        "min_threshold": -5.6,
+        "stage": "heating_phase"
+      }
+    },
+    {
+      "template_id": "cross_check_cooling",
+      "rule_id": "thermocouple_cross_cooling_fullvac",
+      "parameters": {
+        "leading_id": "leading_thermocouples",
+        "lagging_id": "lagging_thermocouples",
+        "max_threshold": 5.6,
+        "stage": "cooling"
+      }
+    },
+    {
+      "template_id": "global_bag_pressure",
+      "rule_id": "bag_pressure_global_fullvac",
+      "parameters": {
+        "calculation_id": "bag_pressure",
+        "threshold": 0,
+        "stage": "global"
+      }
+    }
+  ],
+  "publish": true
+}
+
+

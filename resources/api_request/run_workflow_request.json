@@ -1,0 +1,21 @@
+{
+  "workflow_name": "curing_analysis",
+  "parameters": {
+    "process_id": "process-20241103-001",
+    "series_id": "CA00099852.4",
+    "specification_id": "cps7020-n-308-vacuum",
+    "material": "CPS7020-N-308",
+    "atmosphere_control": true,
+    "sensor_grouping": {
+      "thermocouples": ["PTC10", "PTC11", "PTC23", "PTC24"],
+      "leading_thermocouples": ["PTC10", "PTC11"],
+      "lagging_thermocouples": ["PTC23", "PTC24"],
+      "vacuum_sensors": ["VPRB1"]
+    },
+    "calculation_date": "20221103"
+  },
+  "inputs": {
+    "file_path": "resources/test_data_1.csv",
+    "online_data": false
+  }
+}

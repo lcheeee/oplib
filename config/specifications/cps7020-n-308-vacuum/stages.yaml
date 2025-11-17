@@ -1,0 +1,17 @@
+version: v1
+specification_id: cps7020-n-308-vacuum
+stages:
+- id: pre_ventilation
+  name: 通大气前阶段
+  display_order: 1
+  rules:
+  - bag_pressure_check_1
+- id: heating_phase
+  name: 升温阶段
+  display_order: 2
+- id: soaking
+  name: 保温阶段
+  display_order: 3
+- id: cooling
+  name: 降温阶段
+  display_order: 4

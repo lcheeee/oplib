@@ -1,0 +1,22 @@
+data_source:
+  file_path: resources/test_data_1.csv
+  type: offline
+sensor_mapping:
+  lagging_thermocouples:
+  - PTC23
+  - PTC24
+  leading_thermocouples:
+  - PTC10
+  - PTC11
+  pressure_sensors:
+  - PRESS
+  thermocouples:
+  - PTC10
+  - PTC11
+  - PTC23
+  - PTC24
+  vacuum_sensors:
+  - VPRB1
+specification_id: cps7020-n-308-vacuum
+version: v1
+workflow_id: curing_analysis_offline

@@ -6,36 +6,264 @@ cache:
 
 # 工作流定义
 workflows:
+  curing_analysis_offline:
+    name: "热压罐固化分析工作流（离线）"
+    description: "基于离线传感器数据的固化过程分析工作流"
+    
+    # 指定使用的规范配置
+    specification:
+      default_specification_id: "cps7020-n-308-vacuum"
+      process_type: "curing"
+    
+    # 工作流参数（简化版，大部分参数可选）
+    parameters:
+      process_id:
+        type: "string"
+        required: false
+        description: "流程唯一标识（可选，用于结果标识）"
+      series_id:
+        type: "string"
+        required: false
+        description: "系列号（可选，用于结果标识）"
+      specification_id:
+        type: "string"
+        required: false
+        description: "工艺规范ID（可选，默认使用 specification.default_specification_id）"
+      calculation_date:
+        type: "string"
+        required: false
+        description: "计算日期（可选，格式：YYYYMMDD）"
+    
+    # 分层架构任务流程配置
+    workflow:
+      # 数据源获取层
+      - layer: "data_source"
+        tasks:
+          - id: "load_primary_data"
+            implementation: "csv"
+            algorithm: "local_csv_reader"
+            inputs:
+              path: "{file_path}"
+            depends_on: []
+
+      # 传感器组合层：传感器分组
+      - layer: "data_processing"
+        tasks:
+          - id: "sensor_grouping"
+            implementation: "data_grouper"
+            algorithm: "sensor_grouper"
+            depends_on: ["load_primary_data"]
+
+      # 阶段识别层：基于配置规则的阶段检测
+      - layer: "data_processing"
+        tasks:
+          - id: "stage_detection"
+            implementation: "data_chunker"
+            algorithm: "detect_stage_by_time"
+            depends_on: ["sensor_grouping"]
+
+      # 规格绑定层：将阶段、传感器组与规则绑定
+      - layer: "spec_binding"
+        tasks:
+          - id: "spec_binding"
+            implementation: "spec_binding_processor"
+            algorithm: "rule_planner"
+            depends_on: ["stage_detection"]
+
+      # 规则执行层：执行绑定的规则计划
+      - layer: "data_analysis"
+        tasks:
+          - id: "rule_execution"
+            implementation: "rule_engine_analyzer"
+            algorithm: "rule_engine"
+            inputs:
+              debug_mode: true # 输出中间计算结果到CSV文件
+            depends_on: ["spec_binding"]
+
+      # 质量分析层：可选的质量分析
+      - layer: "data_analysis"
+        tasks:
+          - id: "quality_analysis"
+            implementation: "spc_analyzer"
+            algorithm: "statistical_process_control"
+            inputs:
+              control_limits: true
+              trend_analysis: true
+            depends_on: ["rule_execution"]
+
+      # 结果合并层
+      - layer: "result_merging"
+        tasks:
+          - id: "result_aggregation"
+            implementation: "result_aggregator"
+            algorithm: "comprehensive_aggregator"
+            inputs:
+              include_metadata: true
+              include_timeline: true
+            depends_on: ["rule_execution", "quality_analysis"]
+            
+          - id: "result_formatting"
+            implementation: "result_formatter"
+            algorithm: "standard_format"
+            inputs:
+              output_format: "json"
+              include_metadata: true
+            depends_on: ["result_aggregation"]
+
+      # 结果输出层
+      - layer: "result_output"
+        tasks:
+          - id: "save_local_report"
+            implementation: "file_writer"
+            algorithm: "json_writer"
+            inputs:
+              path: "reports/{process_id}_{execution_time}_report.json"
+              format: "json"
+            depends_on: ["result_formatting"]
+  
+  curing_analysis_online:
+    name: "热压罐固化分析工作流（在线）"
+    description: "基于在线传感器数据的固化过程分析工作流"
+    
+    # 指定使用的规范配置
+    specification:
+      default_specification_id: "cps7020-n-308-vacuum"
+      process_type: "curing"
+    
+    # 工作流参数（简化版，大部分参数可选）
+    parameters:
+      process_id:
+        type: "string"
+        required: false
+        description: "流程唯一标识（可选，用于结果标识）"
+      series_id:
+        type: "string"
+        required: false
+        description: "系列号（可选，用于结果标识）"
+      specification_id:
+        type: "string"
+        required: false
+        description: "工艺规范ID（可选，默认使用 specification.default_specification_id）"
+      calculation_date:
+        type: "string"
+        required: false
+        description: "计算日期（可选，格式：YYYYMMDD）"
+    
+    # 分层架构任务流程配置（与离线版本相同）
+    workflow:
+      # 数据源获取层
+      - layer: "data_source"
+        tasks:
+          - id: "load_primary_data"
+            implementation: "csv"
+            algorithm: "local_csv_reader"
+            inputs:
+              path: "{file_path}"
+            depends_on: []
+
+      # 传感器组合层：传感器分组
+      - layer: "data_processing"
+        tasks:
+          - id: "sensor_grouping"
+            implementation: "data_grouper"
+            algorithm: "sensor_grouper"
+            depends_on: ["load_primary_data"]
+
+      # 阶段识别层：基于配置规则的阶段检测
+      - layer: "data_processing"
+        tasks:
+          - id: "stage_detection"
+            implementation: "data_chunker"
+            algorithm: "detect_stage_by_time"
+            depends_on: ["sensor_grouping"]
+
+      # 规格绑定层：将阶段、传感器组与规则绑定
+      - layer: "spec_binding"
+        tasks:
+          - id: "spec_binding"
+            implementation: "spec_binding_processor"
+            algorithm: "rule_planner"
+            depends_on: ["stage_detection"]
+
+      # 规则执行层：执行绑定的规则计划
+      - layer: "data_analysis"
+        tasks:
+          - id: "rule_execution"
+            implementation: "rule_engine_analyzer"
+            algorithm: "rule_engine"
+            inputs:
+              debug_mode: true # 输出中间计算结果到CSV文件
+            depends_on: ["spec_binding"]
+
+      # 质量分析层：可选的质量分析
+      - layer: "data_analysis"
+        tasks:
+          - id: "quality_analysis"
+            implementation: "spc_analyzer"
+            algorithm: "statistical_process_control"
+            inputs:
+              control_limits: true
+              trend_analysis: true
+            depends_on: ["rule_execution"]
+
+      # 结果合并层
+      - layer: "result_merging"
+        tasks:
+          - id: "result_aggregation"
+            implementation: "result_aggregator"
+            algorithm: "comprehensive_aggregator"
+            inputs:
+              include_metadata: true
+              include_timeline: true
+            depends_on: ["rule_execution", "quality_analysis"]
+            
+          - id: "result_formatting"
+            implementation: "result_formatter"
+            algorithm: "standard_format"
+            inputs:
+              output_format: "json"
+              include_metadata: true
+            depends_on: ["result_aggregation"]
+
+      # 结果输出层
+      - layer: "result_output"
+        tasks:
+          - id: "save_local_report"
+            implementation: "file_writer"
+            algorithm: "json_writer"
+            inputs:
+              path: "reports/{process_id}_{execution_time}_report.json"
+              format: "json"
+            depends_on: ["result_formatting"]
+  
+  # 保留旧的工作流ID（向后兼容，但建议使用新的）
   curing_analysis:
     name: "热压罐固化分析工作流"
-    description: "基于传感器数据的固化过程分析工作流"
+    description: "基于传感器数据的固化过程分析工作流（兼容旧版本）"
+    
+    # 指定使用的规范配置
+    specification:
+      default_specification_id: "cps7020-n-308-vacuum"
+      process_type: "curing"
     
     # 工作流参数
     parameters:
       process_id:
         type: "string"
-        required: true
-        description: "流程唯一标识，由调用方提供（如UUID）"
+        required: false
+        description: "流程唯一标识（可选）"
       series_id:
         type: "string"
-        required: true
-        description: "系列号"
-      specification:
+        required: false
+        description: "系列号（可选）"
+      specification_id:
         type: "string"
-        default: "CPS7020"
-        description: "工艺规范"
-      material:
-        type: "string"
-        default: "CMS-CP-308"
-        description: "主要复合材料"
-      atmosphere_control:
-        type: "boolean"
-        default: false
-        description: "是否通大气"
+        required: false
+        description: "工艺规范ID（可选）"
       calculation_date:
         type: "string"
-        required: true
-        description: "计算日期，格式：YYYYMMDD，如：20241201"
+        required: false
+        description: "计算日期（可选）"
 
     # 分层架构任务流程配置
     workflow:

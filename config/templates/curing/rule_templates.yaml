@@ -1,0 +1,82 @@
+version: v1
+process_type: curing
+description: 固化工艺规则模板 - 定义规则逻辑，使用计算项和阈值占位符
+
+templates:
+  # 袋内压检查规则模板
+  - id: "initial_bag_pressure_check"
+    condition: "{calculation_id} >= {threshold}"
+    description: "初始袋内压下限检查"
+    severity: "major"
+    
+  - id: "bag_pressure_upper_check"
+    condition: "{calculation_id} <= {threshold}"
+    description: "袋内压上限检查"
+    severity: "major"
+    
+  - id: "bag_pressure_range_check"
+    condition: "{min_value} <= {calculation_id} <= {max_value}"
+    description: "袋内压范围检查"
+    severity: "major"
+    
+  # 罐压检查规则模板
+  - id: "curing_pressure_check"
+    condition: "{calculation_id} >= {threshold}"
+    description: "罐压下限检查"
+    severity: "major"
+    
+  - id: "curing_pressure_range_check"
+    condition: "{min_value} <= {calculation_id} <= {max_value}"
+    description: "罐压范围检查"
+    severity: "major"
+    
+  # 温度检查规则模板
+  - id: "temperature_check"
+    condition: "{calculation_id} >= {threshold}"
+    description: "温度下限检查"
+    severity: "major"
+    
+  - id: "temperature_range_check"
+    condition: "{min_temp} <= {calculation_id} <= {max_temp}"
+    description: "温度范围检查"
+    severity: "major"
+    
+  # 升温速率检查规则模板（分段）
+  - id: "heating_rate_range_check"
+    condition: "{min_rate} <= {calculation_id} <= {max_rate}"
+    description: "升温速率范围检查"
+    severity: "major"
+    
+  # 降温速率检查规则模板
+  - id: "cooling_rate_range_check"
+    condition: "{min_rate} <= {calculation_id} <= {max_rate}"
+    description: "降温速率范围检查"
+    severity: "major"
+    
+  # 时间检查规则模板
+  - id: "duration_check"
+    condition: "{calculation_id} >= {min_time}"
+    description: "持续时间下限检查"
+    severity: "major"
+    
+  - id: "duration_range_check"
+    condition: "{min_time} <= {calculation_id} <= {max_time}"
+    description: "持续时间范围检查"
+    severity: "major"
+    
+  # 热电偶交叉检查规则模板
+  - id: "thermocouple_cross_heating_check"
+    condition: "{calculation_id} >= {min_threshold}"
+    description: "升温阶段热电偶交叉检查（领先-滞后≥阈值）"
+    severity: "major"
+    
+  - id: "thermocouple_cross_cooling_check"
+    condition: "{calculation_id} <= {max_threshold}"
+    description: "降温阶段热电偶交叉检查（领先-滞后≤阈值）"
+    severity: "major"
+    
+  - id: "thermocouple_cross_range_check"
+    condition: "{min_threshold} <= {calculation_id} <= {max_threshold}"
+    description: "热电偶交叉范围检查"
+    severity: "major"
+
